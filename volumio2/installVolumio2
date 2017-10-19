@@ -1,1 +1,294 @@
+#!/bin/bash
 
+# Source & license at https://github.com/macmpi/berryboot-scripts
+# Feel free to report any issue or comment there.
+
+INSTVOLVERSION="1.0"
+
+BBINITURL="http://bit.do/BBInitV2"    
+INSTV2URL="http://bit.do/InstV2"  
+
+
+MOUNTDIR=${1:-""}
+
+UPDATE_SELF=${UPDATE_SELF:-1}
+WORK_PATH="$(pwd)"
+
+function update_self() {      # function mostly borrowed from MrEngman install-wifi: thanks!
+        echo " *** Performing self-update"
+        _tempFileName="$0.tmp"
+
+        if ! curl -Ls --output "${_tempFileName}" "${INSTV2URL}"; then
+                echo " !!! Failed to download update for $0 !"
+                echo " !!! Make sure you have ca-certificates installed and that time is set correctly"
+                exit 1
+        fi
+
+        OCTAL_MODE=$(stat -c '%a' "$0")
+        if ! chmod ${OCTAL_MODE} "${_tempFileName}" ; then
+                echo " !!! Failed: Error while trying to set mode on ${_tempFileName}"
+                exit 1
+        fi
+
+        cat > "${WORK_PATH}/.updateScript.sh" << EOF
+        if mv "${_tempFileName}" "$0"; then
+                rm -- "\$0"
+                exec env UPDATE_SELF=0 /bin/bash "$0" "${MOUNTDIR}"
+        else
+                echo " !!! Failed!"
+        fi
+EOF
+
+        echo " *** Relaunching after update"
+        exec /bin/bash "${WORK_PATH}/.updateScript.sh"
+}
+
+
+
+############# Few general checks to run safely
+[ "$BASH_VERSION" != '' ] || { echo >&2 "Please run with bash, or as: ./$0  Exiting now..."; exit 1; }
+wget -q --tries=10 --timeout=20 --spider http://google.com > /dev/null 2>&1 || { echo >&2 "Please check your internet connection !! Exiting now..."; exit 1; }
+
+[ "${UPDATE_SELF}" -ne 0 ] && { update_self; }
+
+
+echo -n "
+######################################################
+########### Volumio2 install on Berryboot  ###########
+###########    version  ${INSTVOLVERSION}   by macmpi    ###########
+
+
+This script prepares and installs Volumio2 image for use under berryboot on
+Raspberry Pi
+It MUST be run under a Debian Linux OS (like Raspbian-lite) and with
+internet access.
+At first run, it may install missing Debian packages: this can take time...
+(sudo rights are needed for Debian installs, mounts and image copy)
+
+If run under Pi with berryboot (recommended), it will try to install image into
+final location (SD/USB disk encrypted or not, iSCSI), and reboot onto Volumio2.
+If not run under berryboot (Pi, PC,...), it will try to copy image to
+any connected media eventually containing a berryboot partition.
+If no berryboot data partition is detected, image file may be produced in
+working directory, for later-on use...
+
+Hit any key to continue, or \"q\" to quit "
+read -n 1 resp
+echo ""
+if [ "${resp}" = "q" ]; then
+  echo "Setup unmodified, quitting... Bye!"
+  exit 1
+fi
+
+
+RUNBB=false
+
+! uname -r | grep "\-aufs" > /dev/null 2>&1  || { echo >&2 "berryboot kernel detected !! "; RUNBB=true; }
+
+#############   berryboot-specific sanity check
+# We check if bootdev is properly set in cmdline.txt
+
+BOOT_PART=""
+
+if [ ${RUNBB} = true ]; then
+  echo "Checking berryboot partitions setup"
+
+  CMDLINE=$(cat /proc/cmdline)
+
+  for p in ${CMDLINE};
+  do
+    key=${p%%=*}
+    value=${p#*=}
+  
+    case $key in
+    bootdev)
+      BOOT_PART=$value
+      ;;
+    esac
+  done
+
+  if [ -z "${BOOT_PART}" ]; then
+    echo "
+WARNING !!! please fill/add bootdev= statement in cmdline.txt with reference to
+your berryboot environment boot partition (mmcblk0p1 or sda1 or else)
+
+Statement shall be in the following form: bootdev=mmcblk0p1 or sda1 or else
+
+Then reboot berryboot system, and try again.
+Install will now abort with no change.
+"
+    exit 1
+  fi
+fi
+
+
+# Install required Debian tool packages if needed
+
+function check_install_packages() {
+    APTUPDT=false
+    for p
+    do
+      if ! dpkg-query -s $p 2> /dev/null | grep -q ^"Status: install ok installed" ; then
+      	[ ${APTUPDT} = true ] || { echo >&2 "We need to install a few Debian tools (only once)...please be patient"; echo >&2 ""; sudo apt-get update; }
+        sudo apt-get install -y "$p"
+        APTUPDT=true
+      fi
+    done    
+    [ ${APTUPDT} = false ] || { echo >&2 "Debian tools installed, let's move-on !"; echo >&2 ""; }
+}
+
+
+if [ ${RUNBB} = true ]; then
+  check_install_packages zsync squashfs-tools  # encrypted and iscsi are readily available
+else
+  check_install_packages zsync squashfs-tools cryptsetup open-iscsi
+fi
+
+##################  Determine where to land image file
+
+if [ -z "${MOUNTDIR}" ]; then
+  MOUNTDIR="$(pwd)/berryboot"
+  mkdir -p "${MOUNTDIR}"
+    
+  CRYPT_PART=$( sudo blkid | egrep "TYPE=\"crypto_LUKS\"" | awk -F ":" '{print $1}' )
+  if [ ! -z "${CRYPT_PART}" ] && [ ${RUNBB} = false ]; then   # not on berryboot but encrypted data partition plugged-in
+      echo "Encrypted Berryboot partition found !"
+      sudo cryptsetup luksOpen "${CRYPT_PART}" lukstemp > /dev/null 2>&1
+  fi
+  
+  DEVLIST=$( sudo blkid | egrep "LABEL=\"berryboot\"" | awk -F ":" '{print $1}' )
+  for p in ${DEVLIST}
+  do
+    echo -n "Found berryboot partition at $p : do you want to use this one? [Y/n] "
+    read -n 1 resp
+    echo ""
+    if [ "${resp}" != "n" ]; then
+      # on Berryboot: mounts any type (std, encrypted, iscsi); on other cases all mounted except iscsi  
+      sudo mount "${p}" "${MOUNTDIR}" > /dev/null 2>&1  
+      break
+    fi
+  done
+fi
+
+
+# Handle missing berryboot folder
+DESTDIR="${MOUNTDIR}"/images  
+if ! ls "${DESTDIR}" > /dev/null 2>&1; then
+  DESTDIR="$(pwd)"
+  echo -n "
+Could not find any berryboot data partition !
+
+You may QUIT, and once you manually mount a target berryboot partition, you may
+relaunch and pass relevant mountpoint path as input paramater.
+
+Alternatively, you may choose to CONTINUE, and this script will produce Volumio
+image file into ${DESTDIR} directory.
+You may then move that image later-on yourself into \"images\" directory,
+within your berryboot data partition.  
+
+Hit any key to continue, or \"q\" to quit : "
+  read -n 1 resp
+  echo ""
+  if [ "${resp}" = "q" ]; then
+    if [ -z "$1" ]; then
+      sudo umount "${MOUNTDIR}" > /dev/null 2>&1
+      rmdir "${MOUNTDIR}" > /dev/null 2>&1
+      sudo cryptsetup luksClose lukstemp > /dev/null 2>&1
+    fi
+    echo "Setup unmodified, quitting... Bye!"
+    exit 1
+  fi
+fi
+
+
+####################  Now we start the actual work !...
+IMAGENAME="Volumio2"
+FBVERSION="2.296"    # fallback Volumio2 version if latest can not be detected
+BB_MEM="240"         # this corresponds to Volumio default 16MB gpu memory split. Change if you need different
+
+
+# Try to find latest Volumio2 version number
+VLATEST=$( curl --user-agent "fogent" --silent "https://volumio.org/get-started/#pi" | grep -o 'http:\/\/updates.volumio.org\/pi\/volumio\/.\....' | awk -F "/" '{print $6}' )
+echo ""
+if [ -z "${VLATEST}" ]; then
+  echo "Could not identify latest version, falling-back to version ${FBVERSION}"
+  VLATEST="${FBVERSION}"
+else
+  echo "Volumio2 latest version is: ${VLATEST}"
+fi
+
+
+echo -n "
+Please input desired Volumio2 version (format: 2.xxx   2.185 minimum advised)
+List of available versions here  https://volumio.org/forum/changelog-t1575.html
+For default version ${VLATEST}, just hit [ENTER] : "
+read resp
+if [ ! -z "${resp}" ]; then
+  VLATEST="${resp}"
+fi
+
+echo -n "
+Please input name for the image (no space or special characters)
+For default name ${IMAGENAME}, just hit [ENTER] : "
+read resp
+echo ""
+if [ ! -z "${resp}" ]; then
+  IMAGENAME="${resp}"
+fi
+
+
+DONE=-1
+WORKDIR="tmp_workdir"
+
+mkdir "${WORKDIR}"
+cd "${WORKDIR}"
+
+FILENAME="${IMAGENAME}".img"${BB_MEM}"   # Volumio image file name in Berryboot
+touch "${FILENAME}"
+
+echo "Downloading original image from Volumio2 repo, this may take a bit of time..."
+if zsync -i "${FILENAME}" http://updates.volumio.org/pi/volumio/"${VLATEST}"/volumio_current.sqsh.zsync; then
+  echo "Obtaining patches..."
+  if wget -O berryboot-init "${BBINITURL}" > /dev/null 2>&1; then
+    echo "Applying patches..."
+    if mksquashfs ./berryboot-init volumio_current.sqsh > /dev/null 2>&1; then    
+      echo "Moving image into place..."
+      sudo mv -f volumio_current.sqsh "${DESTDIR}/${FILENAME}" > /dev/null 2>&1
+      DONE=$?
+      [ ${DONE} -eq 0 ] || { echo >&2 "Final Volumio2 image copy failed"; }
+    else
+      echo "Volumio2 image patch failed."
+    fi
+  else
+    echo "Patch files download failed."
+  fi  
+else
+  echo "Volumio2 image download failed, or wrong version."
+fi
+
+
+
+###### clean-up and exit
+cd ..
+echo "cleaning-up..."
+rm -rf "${WORKDIR:?}"
+
+sync
+
+if [ ${RUNBB} = true ]; then
+  sudo umount "${MOUNTDIR}" > /dev/null 2>&1
+  rmdir "${MOUNTDIR}"
+  [ ${DONE} -eq 0 ] && { echo "Install done. You may launch Volumio2 from berryboot UI at next reboot"; }
+else
+  if [ -z "$1" ] && [ "${DESTDIR}" != "$(pwd)" ]; then  # we mounted image so we will unmount
+    sudo umount "${MOUNTDIR}" > /dev/null 2>&1
+    rmdir "${MOUNTDIR}" > /dev/null 2>&1
+    sudo cryptsetup luksClose lukstemp > /dev/null 2>&1
+    [ ${DONE} -eq 0 ] && { echo "Install done. You may plug back your berryboot media into your Pi,
+and launch Volumio2 from berryboot UI at next boot"; }
+  else
+    [ ${DONE} -eq 0 ] && { echo "Install done; image file is available in: ${DESTDIR}/${FILENAME}"; }
+  fi
+fi
+
+exit 0
