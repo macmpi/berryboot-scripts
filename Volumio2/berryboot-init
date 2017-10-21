@@ -281,9 +281,9 @@ mount -t vfat -o defaults,utf8,user,rw,umask=111,dmask=000 ${BOOT_PART} /boot
 # dump early berryboot-init log file into system journal
 cat  ${BBMOUNT}${VLOGFILE}
 rm  ${BBMOUNT}${VLOGFILE} > /dev/null 2>&1
-" > "${DATADIR}"/berryboot-integ
+" > "${DATADIR}"/.berryboot-integ
 
-chmod 774 "${DATADIR}"/berryboot-integ
+chmod 774 "${DATADIR}"/.berryboot-integ
 
 # Setup related Systemd service: re-build at each boot to prevent eventual changes
 mkdir -p "${DATADIR}"/lib/systemd/system
@@ -299,7 +299,7 @@ StandardError=syslog
 SyslogIdentifier=berryboot-integ
 User=root
 Group=root
-ExecStart=/bin/sh /berryboot-integ
+ExecStart=/bin/sh /.berryboot-integ
 
 [Install]
 WantedBy=multi-user.target" > "${DATADIR}"/lib/systemd/system/berryboot-integ.service
@@ -377,4 +377,3 @@ print_msg "Now we can finally boot Volumio2 image..., go!"
 echo ""
 
 # now we follow into the remaining of berryboot init...
-
