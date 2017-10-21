@@ -75,10 +75,10 @@ echo "
 
 ################ generic log utiliy function ###################
 # Display a message and aggregate it for volumio2 journalctl
-VLOGFILE="/data/Vlog.txt"   # Volumio2 OS will consume it
+LOGFILE="/data/V2log.txt"   # Volumio2 OS will consume it
 
 print_msg() {
-  echo "$1" | tee -a /mnt"${VLOGFILE}"
+  echo "$1" | tee -a /mnt"${LOGFILE}"
 }
 
 
@@ -279,8 +279,8 @@ mount -o defaults ${DATA_PART} ${BBMOUNT}
 mount -t vfat -o defaults,utf8,user,rw,umask=111,dmask=000 ${BOOT_PART} /boot
 
 # dump early berryboot-init log file into system journal
-cat  ${BBMOUNT}${VLOGFILE}
-rm  ${BBMOUNT}${VLOGFILE} > /dev/null 2>&1
+cat  ${BBMOUNT}${LOGFILE}
+rm  ${BBMOUNT}${LOGFILE} > /dev/null 2>&1
 " > "${DATADIR}"/.berryboot-integ
 
 chmod 774 "${DATADIR}"/.berryboot-integ
