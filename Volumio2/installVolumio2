@@ -66,7 +66,7 @@ At first run, it may install missing Debian packages: this can take time...
 (sudo rights are needed for Debian installs, mounts and image copy)
 
 If run under Pi with berryboot (recommended), it will try to install image into
-final location (SD/USB disk encrypted or not, iSCSI), and reboot onto Volumio2.
+final location (SD/USB disk encrypted or not, iSCSI).
 If not run under berryboot (Pi, PC,...), it will try to copy image to
 any connected media eventually containing a berryboot partition.
 If no berryboot data partition is detected, image file may be produced in
@@ -181,8 +181,8 @@ Could not find any berryboot data partition !
 You may QUIT, and once you manually mount a target berryboot partition, you may
 relaunch and pass relevant mountpoint path as input paramater.
 
-Alternatively, you may choose to CONTINUE, and this script will produce Volumio
-image file into ${DESTDIR} directory.
+Alternatively, you may choose to CONTINUE, and this script will produce image
+file into ${DESTDIR} directory.
 You may then move that image later-on yourself into \"images\" directory,
 within your berryboot data partition.  
 
