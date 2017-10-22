@@ -278,14 +278,14 @@ sync
 if [ ${RUNBB} = true ]; then
   sudo umount "${MOUNTDIR}" > /dev/null 2>&1
   rmdir "${MOUNTDIR}"
-  [ ${DONE} -eq 0 ] && { echo "Install done. You may launch ${FILENAME} from berryboot UI at next reboot"; }
+  [ ${DONE} -eq 0 ] && { echo "Install done. You may launch ${IMAGENAME} from berryboot UI at next reboot"; }
 else
   if [ -z "$1" ] && [ "${DESTDIR}" != "$(pwd)" ]; then  # we mounted image so we will unmount
     sudo umount "${MOUNTDIR}" > /dev/null 2>&1
     rmdir "${MOUNTDIR}" > /dev/null 2>&1
     sudo cryptsetup luksClose lukstemp > /dev/null 2>&1
     [ ${DONE} -eq 0 ] && { echo "Install done. You may plug back your berryboot media into your Pi,
-and launch ${FILENAME} from berryboot UI at next boot"; }
+and launch ${IMAGENAME} from berryboot UI at next boot"; }
   else
     [ ${DONE} -eq 0 ] && { echo "Install done; image file is available in: ${DESTDIR}/${FILENAME}"; }
   fi
