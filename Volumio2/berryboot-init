@@ -158,8 +158,6 @@ fi
 # so we stay away from any significant changes before doing update (do that first after reset)
 
 BBMOUNT="/berryboot"
-mkdir -p "${DATADIR}${BBMOUNT}"  # create mount point in overlayfs
-
 
 # setting-up /imgpart directory (within overlay) that receives OS updates from Volumio app.
 UPDTDIR="${DATADIR}/imgpart"
@@ -275,6 +273,7 @@ echo "#!/bin/sh
 # but such changes will have not effect at next boot, as file is restored in original state
 
 # mounting  /berryboot and /boot partitions
+mkdir -p ${BBMOUNT}
 mount -o defaults ${DATA_PART} ${BBMOUNT}
 mount -t vfat -o defaults,utf8,user,rw,umask=111,dmask=000 ${BOOT_PART} /boot
 
