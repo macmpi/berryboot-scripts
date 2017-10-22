@@ -1,4 +1,8 @@
 # Scripts for Volumio 2
+
+This integration supports all Volumio2 native functions, including software updates, User-data / Factory reset, etc...
+
+
 You may refer [here](https://volumio.org/forum/multiboot-volumio2-with-kodi-under-berryboot-t6818.html#p33742) for detailed information and install procedure.
 
 Short tip: from any Debian-based distribution (Raspbian under berryboot advised), run the following command:
