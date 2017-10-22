@@ -1,0 +1,354 @@
+#!/bin/busybox sh
+
+# Source & license at https://github.com/macmpi/berryboot-scripts
+# Feel free to report any issue or comment there.
+
+
+### This file resides in LibreELEC read-only squashfs image
+# This script does LibreELEC backoffice supervisor stuff, similarly to LibreELEC original init
+# It is run by berryboot init BEFORE aufs overlay filesystem is composed
+#
+# Note: it is run under Berryboot busybox, with root privileges
+# this script is inlined into berryboot init, so be careful about variables, cd, ...
+#
+# we can use (but shall not modify) the following variables:
+#
+# IMAGE=`cat /tmp/answer`
+# DATADIR="/mnt/data/$IMAGE"
+# SHAREDDIR="/mnt/shared"
+# IMAGEPATH="/mnt/images/$IMAGE"
+# GOVERNOR
+
+ENTRYPATH=$(pwd)     # we are now safe to eventually change directory
+
+
+############## Self-patch init sequence and relaunch from next banner ##################
+# Required until https://github.com/maxnet/berryboot/pull/437 is resolved
+# berryboot-init is inlined into /init, but the file resides in /squashfs.
+# Therefore, while running, it prevents un-mounting squashfs image and then update image.
+# So the trick here is to relaunch this script (and following part of init) from another
+# location, hence exiting/freeing this original file...  (circumvoluted?  humm... yes! :p)
+
+echo ""
+echo "Prepping script relocation..."
+
+# we construct relocated all-in-one init script
+echo "#!/bin/busybox sh" > /reloc-init
+# we keep this script from next banner to execute beyond that point
+sed -n -e '/^#* We start from here !! #*/,$p' /squashfs/berryboot-init >> /reloc-init
+# we append the remaining part of inird
+sed -n -e '/^.*# Fedora and Arch symlink.*/,$p' /init >> /reloc-init
+chmod 770 /reloc-init
+
+# we need to make sure our new /reloc-init can access insofar variables we (and init) need
+export IMAGE
+export DATADIR
+export SHAREDDIR
+export IMAGEPATH
+export GOVERNOR
+export ENTRYPATH
+
+echo "Now we will continue from another location... see you soon !!"
+exec /reloc-init   # exec ensures we keep PID 1, which is required for switch_root
+
+# now we are gone in hyperspace !!!
+
+
+###################### We start from here !! ###########################
+
+BBINITVERSION="1.0"
+
+# due to wget https limitation in berryboot:
+# https://github.com/maxnet/berryboot/issues/439
+# we need http only, so we can not link to github for now....
+# will be redirected to Github as soon as possible
+BBINITURL="http://bit.do/BBInitLE"    
+
+
+echo "
+#######################################################
+########### LibreELEC Berryboot Integration ###########
+###########    version  ${BBINITVERSION}    by macmpi    ###########
+"
+
+
+################ generic log utiliy function ###################
+# Display a message and aggregate it for LibreELEC journalctl
+LOGFILE="/data/LElog.txt"   # LibreELEC OS will consume it
+
+print_msg() {
+  echo "$1" | tee -a /mnt"${LOGFILE}"
+}
+
+
+########### detect Partitions devices  ######################
+
+# boot partition may not be set by berryboot install in cmdline.txt: that is dangerous!
+BOOT_PART=""
+CMDLINE=$(cat /proc/cmdline)
+
+for p in ${CMDLINE};
+do
+  key=${p%%=*}
+  value=${p#*=}
+  
+  case $key in
+  bootdev)
+    BOOT_PART=$value    # does not include /dev name part
+    ;;
+  esac
+done
+
+# sanity-check
+if [ -z "${BOOT_PART}" ]; then
+  echo "
+WARNING !!!  Please check & edit bootdev= statement in cmdline.txt on your
+Berryboot boot partiton. cmdline.txt MUST have a proper bootdev definition
+statement:   bootdev=mmcblk0p1 or =sda1 or other relevant boot partition
+Device will now halt in few seconds"
+  sync
+  umount /mnt
+  sleep 10
+  halt -f
+else
+  BOOT_PART="/dev/${BOOT_PART}"
+fi
+
+
+# Berryboot data partiton (always exists at this point) may not be directly the one specified in
+# cmdline.txt by datadev= , namely in case of complex mounts such as encrypted partitions or iSCSI
+# so we look at which device corresponds to /mnt currently, as berryboot has completed it's own mounting work here
+# in case of encrypted partitions, fstab mount requires mount by UUID, so we always use it
+DATA_PART=$(df | egrep "/mnt" | awk '{print $1}')
+
+print_msg "Partitions found:  boot: ${BOOT_PART}   berryboot data: ${DATA_PART}"
+
+########### Sanity-checks finished #######
+
+
+
+###############################################################
+############## LibreELEC Reset & Updates functions ############
+###############################################################
+
+# Deal with factory reset (as in /usr/lib/libreelec/factory-reset)
+# In both cases we just clean flags and just do soft reset
+
+if [ -f "${DATADIR}"/storage/.cache/reset_oe ]; then
+  print_msg "Performing hard reset..."
+  rm -rf "${DATADIR}" /dev/null 2>&1  # also wipes flags
+fi
+
+if [ -f "${DATADIR}"/storage/.cache/reset_xbmc ]; then
+  print_msg "Performing soft reset..."
+  rm -rf "${DATADIR}"/storage/.??* > /dev/null 2>&1  # also wipes flags
+fi
+
+
+# We kill baseline script as we do not want it to be run at runtime
+mkdir -p "${DATADIR}"/usr/lib/libreelec
+[ -f "${DATADIR}"/usr/lib/libreelec/factory-reset ] || { echo "#!/bin/sh" > "${DATADIR}"/usr/lib/libreelec/factory-reset; }
+
+
+# Deal with backup-restore (as in /usr/lib/libreelec/backup-restore)
+# We kill baseline script as it not used at runtime
+[ -f "${DATADIR}"/usr/lib/libreelec/backup-restore ] || { echo "#!/bin/sh" > "${DATADIR}"/usr/lib/libreelec/backup-restore; }
+
+BACKUP_FILE=$( ls -1 "${DATADIR}"/storage/.restore/??????????????.tar 2>/dev/null | tail -1 )
+
+if [ -f "$BACKUP_FILE" ]; then
+  print_msg "Checking backup file... "
+  if tar tf $BACKUP_FILE > /dev/null 2>&1; then
+    print_msg "Restoring backup... "
+    rm -rf "${DATADIR}"/storage/.kodi > /dev/null 2>&1
+    rm -rf "${DATADIR}"/storage/.cache > /dev/null 2>&1
+    rm -rf "${DATADIR}"/storage/.config > /dev/null 2>&1
+    tar xf $BACKUP_FILE -C "${DATADIR}" > /dev/null 2>&1
+    rm -f $BACKUP_FILE > /dev/null 2>&1
+  else
+    print_msg "Backup file is not valid, or corrupt."
+    rm -f $BACKUP_FILE > /dev/null 2>&1
+  fi
+fi
+
+
+################# LibreELEC Updates section ##########################
+# Now we setup things so that LibreELEC built-in differential updates work.
+# We check if such update has been done previously, in order to replace image.
+# Note: after update we relaunch new-image script with it's own script do new own setup
+# so we stay away from any significant changes before doing update (do that first)
+
+BBMOUNT="/berryboot"
+
+
+# monitor /storage/.update directory (within overlay) that receives OS updates from LibreELEC app.
+UPDTDIR="${DATADIR}/storage/.update"
+if [ ! -d "${UPDTDIR}" ]; then
+  mkdir -p "${UPDTDIR}"
+  chmod 777 "${UPDTDIR}"
+fi
+
+cd "${UPDTDIR}"
+
+UPDATE_TAR=$( basename ./*.tar .tar | head -n 1 )
+UPDATE_IMG_GZ=$( basename ./*.img.gz .img.gz | head -n 1 )
+UPDATE_IMG=$( basename ./*.img .img | head -n 1)
+
+if [ -f "${UPDATE_TAR}".tar ]; then
+  print_msg "Found .tar compressed archive for update, extracting..."  
+  if tar -xf "${UPDTDIR}/${UPDATE_TAR}".tar "${UPDATE_TAR}"/target/SYSTEM > /dev/null 2>&1; then  
+    print_msg "Installing updated image"
+    # we try to get latest patches from network or fallback with existing ones
+    if ! wget -O berryboot-init "${BBINITURL}" > /dev/null 2>&1; then
+      cp /squashfs/berryboot-init .
+    fi
+    chmod ug+x berryboot-init   # needed because we will relaunch with exec command, not inline
+    print_msg "Patching updated image"
+    if mksquashfs ./berryboot-init "${UPDATE_TAR}"/target/SYSTEM > /dev/null 2>&1; then
+      print_msg "Unmounting previous image and replacing with new"
+      umount -f /squashfs  # we are now running from /reloc-init so we should be safe to keep running!...
+      mv -f "${UPDATE_TAR}"/target/SYSTEM "${IMAGEPATH}"
+      rm -rf "${UPDTDIR:?}"/*
+      sync
+      clear
+      print_msg "Mounting Updated image ${IMAGE}"
+      mount -o loop,ro "${IMAGEPATH}" /squashfs
+      cd "${ENTRYPATH}"
+      print_msg "Relaunching with updated image & init..."
+      exec /squashfs/berryboot-init   # exec ensures we keep PID 1
+    else
+      print_msg "Patching new image failed, keeping current image"
+    fi
+  else
+    print_msg "Update extraction failed, keeping current image"
+  fi
+elif [ -f "$UPDATE_IMG_GZ".img.gz -o -f "$UPDATE_IMG".img ]; then
+  print_msg "Found new compressed image file: not supported for now!"
+fi
+
+rm -rf "${UPDTDIR:?}"/*
+
+
+##################################################################
+############    General config for LibreELEC OS boot   ############
+##################################################################
+
+
+# LibreELEC swap depends about /usr/lib/libreelec/mount-swap and /etc/swap.conf
+# Is disabled by default & can not be set by UI: we do not handle for now
+# we enforce defaults until someone complains
+mkdir -p "${DATADIR}"/etc
+cat /squashfs/etc/swap.conf > "${DATADIR}"/etc/swap.conf
+
+
+################ berryboot-integ script & systemd service ###################################
+# setup berryboot-integ script and related systemd service to launch berryboot-integ at LibreELEC OS startup
+# This allows to mount partitions and issue pre-boot berryboot-phase log into system journal
+
+print_msg "Creating Berryboot integration systemd service for LibreELEC OS"
+
+# berryboot-integ script is always restored in original state
+echo "#!/bin/sh
+
+### This file resides in LibreELEC image overlay filesystem
+# It is run as root during LibreELEC OS image startup through Systemd service.
+# As LibreELEC OS boots from aufs overlayed filesystem, one may modify this file
+# but such changes will have not effect at next boot, as file is restored in original state
+
+# LibreELEC init mounts boot partition as read-only in /flash, so we do same.
+# There is a recovery version in /usr/share/bootloader/ used by init (& elsewhere?)
+# one may remount /flash in read-write to update it or do recovery
+# as we do not want that to happen we do remove that content in overlay.
+rm -rf /usr/share/bootloader/*
+mount -o ro,noatime ${BOOT_PART} /flash
+
+# mounting  /berryboot partition
+mkdir -p ${BBMOUNT}
+mount -o defaults ${DATA_PART} ${BBMOUNT}
+
+# dump early berryboot-init log file into system journal
+cat  ${BBMOUNT}${LOGFILE}
+rm  ${BBMOUNT}${LOGFILE} > /dev/null 2>&1
+" > "${DATADIR}"/.berryboot-integ
+
+chmod 774 "${DATADIR}"/.berryboot-integ
+
+# Setup related Systemd service: re-build at each boot to prevent eventual changes
+mkdir -p "${DATADIR}"/usr/lib/systemd/system
+echo "[Unit]
+Description = Berryboot integration service
+After=local-fs.target
+
+[Service]
+Type=simple
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=berryboot-integ
+User=root
+Group=root
+ExecStart=/bin/sh /.berryboot-integ
+
+[Install]
+WantedBy=multi-user.target" > "${DATADIR}"/usr/lib/systemd/system/berryboot-integ.service
+
+# Enable Systemd service
+mkdir -p "${DATADIR}"/usr/lib/systemd/system/multi-user.target.wants
+ln -s /usr/lib/systemd/system/berryboot-integ.service "${DATADIR}"/usr/lib/systemd/system/multi-user.target.wants/berryboot-integ.service > /dev/null 2>&1
+
+
+
+
+#############################################################
+###############         now some FUN  !!!!       ############
+#############################################################
+
+# Now the hard work is done, lets have a bit of fun !!...
+# we will modify that very file within the overlay filesystem: indeed any "edits" to this file
+# from here in overlay filesystem, or from booted LibreELEC OS will actually have NO effects
+# as it is run earlier in the boot process, directly from read-only squashfs image.
+# One may then write whatever one wants, or even "delete" it to hide it to ones view, as ugly it may look.
+# LibreELEC Factory reset or User Data reset will restore file in its original state
+
+if [ ! -e "${DATADIR}"/berryboot-init ]; then
+  cat << "EOF" > "${DATADIR}"/berryboot-init
+                      
+  
+                       /\/\/\/\/\/\  
+                      <            >
+                       |          |
+                       |          |
+                       |   _  _   |
+                      -|_ / \/ \_ |-
+                     |I|  \_/\_/  |I|       Change is good.
+                      -|   /  \   |-         You go first.
+                       |   \__/   |
+                       |          |
+                       |          |
+                       |__________|
+                      /___/\__/\___\ 
+                     /     | \|     \ 
+                       /\  |\ | _@|#_
+                      / /\ | \| |   |
+                      \/  / \ / |   |
+                       \_/___/   \_/ 
+
+
+
+
+
+
+
+PS: feel free to write whatever you want here as on a whiteboard:
+    laundry list, poems, ascii drawings,...
+    or you may delete file if you wish.
+EOF
+
+  chmod 666 "${DATADIR}"/berryboot-init
+fi
+
+sync
+cd "${ENTRYPATH}"
+print_msg "Now we can finally boot LibreELEC image..., go!"
+echo ""
+
+# now we follow into the remaining of berryboot init...
