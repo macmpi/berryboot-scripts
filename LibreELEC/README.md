@@ -7,4 +7,6 @@ Short tip: from any Debian-based distribution (Raspbian under berryboot advised)
 ```
 curl -Ls --output installLibreELEC http://bit.do/InstLE; chmod u+x installLibreELEC; ./installLibreELEC
 ```
-and follow onscreen instructions to install LibreELEC image on your berryboot media.
+and follow onscreen instructions to install a patched LibreELEC image on your berryboot media.
+
+That patched image will then natively support all features, as would the standalone distribution.
