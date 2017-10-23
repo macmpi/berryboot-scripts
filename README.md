@@ -11,7 +11,7 @@ Therefore, the 1-line install command is only needed (once) for initial image cr
 
 
 #### Prerequisite(s):
-- the obvious: install Berryboot on a media, and do initial setup as per [this](http://www.berryterminal.com/doku.php/berryboot).
+- *the obvious:* install Berryboot on a media, and do initial setup as per [this](http://www.berryterminal.com/doku.php/berryboot).
 In `cmdline.txt` file on boot partition, you MUST set `bootdev=` parameter to point to the used berryboot boot partition (berryboot installer does not always do it, which may cause issues)
 
 - **either** (preferred) install Raspbian image (lite is fine) under berryboot and open shell there, **or** plug your configured berryboot media into any Debian-based Linux machine under shell (Ubuntu & derivatives, Mint, Pixel, Debian, etc...)
