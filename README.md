@@ -1,7 +1,7 @@
 # berryboot integration scripts
 Repo for (hopefully) usefull berryboot integration scripts for various popular distributions
 
-For each supported Distibution, a 1-line shell command is given to run an installer which downloads a genuine image, patches-it, and installs it for use inside berryboot.
+For each supported Distibution, a 1-line shell command is provided to run the installer which downloads a genuine image, patches-it, and then installs it for use inside berryboot.
 
 Such patched image is then capable of supporting all Distribution features by itself, including auto-updates, resets, etc...
 
