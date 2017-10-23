@@ -9,4 +9,6 @@ Short tip: from any Debian-based distribution (Raspbian under berryboot advised)
 ```
 curl -Ls --output installVolumio2 http://bit.do/InstV2; chmod u+x installVolumio2; ./installVolumio2
 ```
-and follow onscreen instructions to install Volumio2 image on your berryboot media.
+and follow onscreen instructions to install a patched Volumio2 image on your berryboot media.
+
+That patched image will then natively support all features, as would the standalone distribution.
