@@ -18,7 +18,7 @@ That patched image will then natively support all features, as would the standal
 ## supported features:
 - Software update through Volumio2 UI (note: updated image will automatically be patched with latest patch version available)
 - User Data / Factory reset through Volumio2 UI
-- Swap on lower memory devices (note: can be prevented by adding /nowsap file in Volumio2 shell)
+- Swap on lower memory devices (note: can be prevented by adding /nowsap file from Volumio2 shell)
 - patch log available in system journal
 
 
