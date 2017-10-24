@@ -25,9 +25,10 @@ In `cmdline.txt` file on boot partition, you MUST set `bootdev=` parameter to po
 
 ### supported features:
 - Software update through Volumio2 UI (note: updated image will automatically be patched with latest patch version available)
-- User Data / Factory reset through Volumio2 UI
+- User Data / Factory reset through Volumio2 UI.
 - Swap on lower memory devices (note: may be disabled by adding /noswap file from Volumio2 shell)
-- patch log available in system journal
+- patch log available in system journal.
+- `installVolumio2` script is available in volumio user home directory for installing more images if needed.
 
 
 
