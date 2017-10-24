@@ -13,10 +13,14 @@ That patched image will then natively support all features, as would the standal
 
 
 
+#### Prerequisite(s):
+- *the obvious:* install Berryboot on a media, and do initial setup as per [this](http://www.berryterminal.com/doku.php/berryboot).
+In `cmdline.txt` file on boot partition, you MUST set `bootdev=` parameter to point to the used berryboot boot partition (berryboot installer does not always do it, which may cause issues)
+
+- **either** (preferred) install Raspbian image (lite is fine) under berryboot and open shell there, **or** plug your configured berryboot media into any Debian-based Linux machine under shell (Ubuntu & derivatives, Mint, Pixel, Debian, etc...)
 
 
-
-## supported features:
+### supported features:
 - Software update through LibreELEC UI: manual & auto modes (note: updated image will automatically be patched with latest patch version available)
 - Soft / Hard reset through LibreELEC UI
 - Backup restore through LibreELEC UI
@@ -24,6 +28,6 @@ That patched image will then natively support all features, as would the standal
 
 
 
-## changelog:
+### changelog:
 1.0:  (October 22nd 2017)
 - initial version
