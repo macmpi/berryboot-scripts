@@ -237,8 +237,7 @@ sed '/^\/dev\/.*\/boot.*vfat.*/d' /squashfs/etc/fstab > "${DATADIR}"/etc/fstab
 
 ########### Swap management ###########
 # we patch original /bin/dynswap.sh to relocate swap file at /berryboot/data/volumio_swapfile,
-# and disable dynamicswap.service at startup (path to swap file not mounted yet). It will still be launched
-# (dynamicswap wanted by volumio.service, but after berryboot-integ) after /berryboot partition is available
+# and patch dynamicswap.service so that it is launched after /berryboot mount is available
 # /berryboot/data/volumio_swapfile will be common to any Volumio2 image running under berryboot
 #
 # we add a feature: if /noswap file is present, then we disable swap at all
@@ -248,14 +247,17 @@ mkdir -p "${DATADIR}"/bin
 if [ -e "${DATADIR}"/noswap ]; then
   echo "#!/bin/sh" > "${DATADIR}"/bin/dynswap.sh
 else
-  sed 's/\/data\/swapfile/\/berryboot\/data\/volumio_swapfile/g' /squashfs/bin/dynswap.sh > "${DATADIR}"/bin/dynswap.sh
+  sed 's/\/data\/swapfile/\/'"${BBMOUNT#"/"}"'\/data\/volumio_swapfile/g' /squashfs/bin/dynswap.sh > "${DATADIR}"/bin/dynswap.sh
 fi
 chmod 774 "${DATADIR}"/bin/dynswap.sh
 
-# disable dynamicswap.service at startup
-mkdir -p "${DATADIR}"/etc/systemd/system/multi-user.target.wants
-touch "${DATADIR}"/etc/systemd/system/multi-user.target.wants/.wh.dynamicswap.service
-
+# ensure swap service is started after /berryboot mount
+mkdir -p "${DATADIR}"/lib/systemd/system
+echo "[Unit]
+Description = Berryboot-modded dynamicswap service
+After=${BBMOUNT#"/"}.mount
+" > "${DATADIR}"/lib/systemd/system/dynamicswap.service
+cat /squashfs/lib/systemd/system/dynamicswap.service >> "${DATADIR}"/lib/systemd/system/dynamicswap.service
 
 ################ berryboot-integ script & systemd service ###################################
 # setup berryboot-integ script and related systemd service to launch berryboot-integ at Volumio OS startup
@@ -278,7 +280,7 @@ mount -o defaults ${DATA_PART} ${BBMOUNT}
 mount -t vfat -o defaults,utf8,user,rw,umask=111,dmask=000 ${BOOT_PART} /boot
 
 # dump early berryboot-init log file into system journal
-cat  ${BBMOUNT}${LOGFILE}
+cat ${BBMOUNT}${LOGFILE}
 rm  ${BBMOUNT}${LOGFILE} > /dev/null 2>&1
 " > "${DATADIR}"/.berryboot-integ
 
@@ -289,7 +291,6 @@ mkdir -p "${DATADIR}"/lib/systemd/system
 echo "[Unit]
 Description = Berryboot integration service
 After=local-fs.target
-Before=dynamicswap.service
 
 [Service]
 Type=simple
@@ -326,17 +327,12 @@ fi
 ###############         now some FUN  !!!!       ############
 #############################################################
 
-# Now the hard work is done, lets have a bit of fun !!...
-# we will modify that very file within the overlay filesystem: indeed any "edits" to this file
-# from here in overlay filesystem, or from booted Volumio OS will actually have NO effects
-# as it is run earlier in the boot process, directly from read-only squashfs image.
-# One may then write whatever one wants, or even "delete" it to hide it to ones view, as ugly it may look.
-# Volumio Factory reset or User Data reset will restore file in its original state
+# hide /berryboot-init file in overlay
+touch "${DATADIR}"/.wh.berryboot-init
 
-if [ ! -e "${DATADIR}"/berryboot-init ]; then
-  cat << "EOF" > "${DATADIR}"/berryboot-init
-                      
-  
+cat /squashfs/etc/motd > "${DATADIR}"/etc/motd
+cat << "EOF" >> "${DATADIR}"/etc/motd
+                       
                        /\/\/\/\/\/\  
                       <            >
                        |          |
@@ -357,18 +353,9 @@ if [ ! -e "${DATADIR}"/berryboot-init ]; then
                        \_/___/   \_/ 
 
 
+Reminder: we run under berryboot kernel now...
 
-
-
-
-
-PS: feel free to write whatever you want here as on a whiteboard:
-    laundry list, poems, ascii drawings,...
-    or you may delete file if you wish.
 EOF
-
-  chmod 666 "${DATADIR}"/berryboot-init
-fi
 
 sync
 cd "${ENTRYPATH}"
