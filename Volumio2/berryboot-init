@@ -309,6 +309,16 @@ mkdir -p "${DATADIR}"/etc/systemd/system/multi-user.target.wants
 ln -s /lib/systemd/system/berryboot-integ.service "${DATADIR}"/etc/systemd/system/multi-user.target.wants/berryboot-integ.service > /dev/null 2>&1
 
 
+############ Remove MrEngman-related drivers /etc/modprobe.d/xxx.conf ####################
+# 8192cu.conf is in kernel so we keep
+# we also keep blacklist-rtl8xxxu.conf blacklist-rtl8192cu.conf as drivers are still unmature
+print_msg "Removing MrEngman drivers .conf"
+mkdir -p "${DATADIR}"/etc/modprobe.d
+touch "${DATADIR}"/etc/modprobe.d/.wh.8188eu.conf
+touch "${DATADIR}"/etc/modprobe.d/.wh.8192eu.conf
+touch "${DATADIR}"/etc/modprobe.d/.wh.8812au.conf
+
+
 ################ Add installVolumio2 script as bonus #########################
 
 if [ ! -x "${DATADIR}"/home/volumio/installVolumio2 ]; then
