@@ -302,17 +302,12 @@ ln -s /usr/lib/systemd/system/berryboot-integ.service "${DATADIR}"/usr/lib/syste
 ###############         now some FUN  !!!!       ############
 #############################################################
 
-# Now the hard work is done, lets have a bit of fun !!...
-# we will modify that very file within the overlay filesystem: indeed any "edits" to this file
-# from here in overlay filesystem, or from booted LibreELEC OS will actually have NO effects
-# as it is run earlier in the boot process, directly from read-only squashfs image.
-# One may then write whatever one wants, or even "delete" it to hide it to ones view, as ugly it may look.
-# LibreELEC Factory reset or User Data reset will restore file in its original state
+# hide /berryboot-init file in overlay
+touch "${DATADIR}"/.wh.berryboot-init
 
-if [ ! -e "${DATADIR}"/berryboot-init ]; then
-  cat << "EOF" > "${DATADIR}"/berryboot-init
-                      
-  
+cat /squashfs/etc/motd > "${DATADIR}"/etc/motd
+cat << "EOF" >> "${DATADIR}"/etc/motd
+                       
                        /\/\/\/\/\/\  
                       <            >
                        |          |
@@ -333,18 +328,9 @@ if [ ! -e "${DATADIR}"/berryboot-init ]; then
                        \_/___/   \_/ 
 
 
+Reminder: we run under berryboot kernel now...
 
-
-
-
-
-PS: feel free to write whatever you want here as on a whiteboard:
-    laundry list, poems, ascii drawings,...
-    or you may delete file if you wish.
 EOF
-
-  chmod 666 "${DATADIR}"/berryboot-init
-fi
 
 sync
 cd "${ENTRYPATH}"
