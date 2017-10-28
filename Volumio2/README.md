@@ -33,5 +33,9 @@ In `cmdline.txt` file on boot partition, you MUST set `bootdev=` parameter to po
 
 
 ### changelog:
+1.1:  (October 28th 2017)
+- improve `/boot` & `/berryboot` mounts scheduling and `dynamicswap.service` dependency
+- clean-up MrEngman drivers .conf
+
 1.0:  (October 19th 2017)
 - initial version
