@@ -56,7 +56,7 @@ exec /reloc-init   # exec ensures we keep PID 1, which is required for switch_ro
 
 ###################### We start from here !! ###########################
 
-BBINITVERSION="1.0"
+BBINITVERSION="1.1"
 
 # due to wget https limitation in berryboot:
 # https://github.com/maxnet/berryboot/issues/439
@@ -224,47 +224,53 @@ rmdir "${BOOTMOUNT}"
 ############    General config for Volumio2 OS boot   ############
 ##################################################################
 
-############ fstab cleanup ########
+
+############ Manage OS mounts ########
 # Remove eventual /boot mount from original fstab
 # do it at each squashfs mount, as partiton layout may have changed (image update, cloned setup from another media)
 # we do not add /berryboot mounts here because it will fail in case of encrypted Partitions
-# will mount in berryboot-integ service
+# will mount within berryboot-integ service
 
 print_msg "Patching Volumio /etc/fstab to remove original /boot"
 mkdir -p "${DATADIR}"/etc
 sed '/^\/dev\/.*\/boot.*vfat.*/d' /squashfs/etc/fstab > "${DATADIR}"/etc/fstab
 
 
-########### Swap management ###########
-# we patch original /bin/dynswap.sh to relocate swap file at /berryboot/data/volumio_swapfile,
-# and patch dynamicswap.service so that it is launched after /berryboot mount is available
-# /berryboot/data/volumio_swapfile will be common to any Volumio2 image running under berryboot
-#
-# we add a feature: if /noswap file is present, then we disable swap at all
-
-print_msg "Optimizing swap management"
-mkdir -p "${DATADIR}"/bin
-if [ -e "${DATADIR}"/noswap ]; then
-  echo "#!/bin/sh" > "${DATADIR}"/bin/dynswap.sh
-else
-  sed 's/\/data\/swapfile/\/'"${BBMOUNT#"/"}"'\/data\/volumio_swapfile/g' /squashfs/bin/dynswap.sh > "${DATADIR}"/bin/dynswap.sh
-fi
-chmod 774 "${DATADIR}"/bin/dynswap.sh
-
-# ensure swap service is started after /berryboot mount
-mkdir -p "${DATADIR}"/lib/systemd/system
-echo "[Unit]
-Description = Berryboot-modded dynamicswap service
-After=${BBMOUNT#"/"}.mount
-" > "${DATADIR}"/lib/systemd/system/dynamicswap.service
-cat /squashfs/lib/systemd/system/dynamicswap.service >> "${DATADIR}"/lib/systemd/system/dynamicswap.service
-
 ################ berryboot-integ script & systemd service ###################################
 # setup berryboot-integ script and related systemd service to launch berryboot-integ at Volumio OS startup
 # This allows to mount partitions and issue pre-boot berryboot-phase log into system journal
 # We also use it to schedule swap during OS boot as this shall not happen before berryboot partition is mounted
+mkdir -p "${DATADIR}"/lib/systemd/system
+mkdir -p "${DATADIR}"/etc/systemd/system/multi-user.target.wants
 
 print_msg "Creating Berryboot integration systemd service for Volumio OS"
+
+echo "[Unit]
+Description = Berryboot integration service
+DefaultDependencies=false
+
+After=network.target
+Before=sysinit.target
+Before=dynamicswap.service
+
+[Service]
+Type=simple
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=berryboot-integ
+User=root
+Group=root
+ExecStartPre=/bin/mkdir -p ${BBMOUNT}
+ExecStartPre=/bin/mount -o defaults ${DATA_PART} ${BBMOUNT}
+ExecStartPre=/bin/mount -t vfat -o defaults,utf8,user,rw,umask=111,dmask=000 ${BOOT_PART} /boot
+ExecStart=/bin/sh /.berryboot-integ
+
+[Install]
+WantedBy=multi-user.target" > "${DATADIR}"/lib/systemd/system/berryboot-integ.service
+
+# Enable Systemd service
+ln -s /lib/systemd/system/berryboot-integ.service "${DATADIR}"/etc/systemd/system/multi-user.target.wants/berryboot-integ.service > /dev/null 2>&1
+
 
 # berryboot-integ script is always restored in original state
 echo "#!/bin/sh
@@ -274,11 +280,6 @@ echo "#!/bin/sh
 # As Volumio OS boots from aufs overlayed filesystem, one may modify this file
 # but such changes will have not effect at next boot, as file is restored in original state
 
-# mounting  /berryboot and /boot partitions
-mkdir -p ${BBMOUNT}
-mount -o defaults ${DATA_PART} ${BBMOUNT}
-mount -t vfat -o defaults,utf8,user,rw,umask=111,dmask=000 ${BOOT_PART} /boot
-
 # dump early berryboot-init log file into system journal
 cat ${BBMOUNT}${LOGFILE}
 rm  ${BBMOUNT}${LOGFILE} > /dev/null 2>&1
@@ -286,27 +287,41 @@ rm  ${BBMOUNT}${LOGFILE} > /dev/null 2>&1
 
 chmod 774 "${DATADIR}"/.berryboot-integ
 
-# Setup related Systemd service: re-build at each boot to prevent eventual changes
-mkdir -p "${DATADIR}"/lib/systemd/system
+
+########### Swap management ###########
+# /berryboot/data/volumio_swapfile will be common to any Volumio2 image running under berryboot
+#
+# we add a feature: if /noswap file is present, then we disable swap at all
+
+print_msg "Optimizing swap management"
+
+# Patch original dynamicswap.service to ensure swap service is started after /berryboot mount
+# we only add or change [UNIT] header of service
 echo "[Unit]
-Description = Berryboot integration service
-After=local-fs.target
+Description = Berryboot-modded dynamicswap service
+DefaultDependencies=false
 
-[Service]
-Type=simple
-StandardOutput=syslog
-StandardError=syslog
-SyslogIdentifier=berryboot-integ
-User=root
-Group=root
-ExecStart=/bin/sh /.berryboot-integ
+Before=swap.target umount.target
+Conflicts=umount.target
+Wants=swap.target
 
-[Install]
-WantedBy=multi-user.target" > "${DATADIR}"/lib/systemd/system/berryboot-integ.service
+After=berryboot-integ.service
+ConditionPathExists=${BBMOUNT}/data
+" > "${DATADIR}"/lib/systemd/system/dynamicswap.service
+sed -n -e '/^\[Service\]/,$p' /squashfs/lib/systemd/system/dynamicswap.service >> "${DATADIR}"/lib/systemd/system/dynamicswap.service
 
 # Enable Systemd service
-mkdir -p "${DATADIR}"/etc/systemd/system/multi-user.target.wants
-ln -s /lib/systemd/system/berryboot-integ.service "${DATADIR}"/etc/systemd/system/multi-user.target.wants/berryboot-integ.service > /dev/null 2>&1
+ln -s /lib/systemd/system/dynamicswap.service "${DATADIR}"/etc/systemd/system/multi-user.target.wants/dynamicswap.service > /dev/null 2>&1
+
+
+# Patch original /bin/dynswap.sh to relocate swap file and add noswap feature
+mkdir -p "${DATADIR}"/bin
+if [ -e "${DATADIR}"/noswap ]; then
+  echo "#!/bin/sh" > "${DATADIR}"/bin/dynswap.sh
+else
+  sed 's/\/data\/swapfile/\/'"${BBMOUNT#"/"}"'\/data\/volumio_swapfile/g' /squashfs/bin/dynswap.sh > "${DATADIR}"/bin/dynswap.sh
+fi
+chmod 774 "${DATADIR}"/bin/dynswap.sh
 
 
 ############ Remove MrEngman-related drivers /etc/modprobe.d/xxx.conf ####################
