@@ -29,5 +29,8 @@ In `cmdline.txt` file on boot partition, you MUST set `bootdev=` parameter to po
 
 
 ### changelog:
+1.1:  (October 29th 2017)
+- support all update files
+
 1.0:  (October 22nd 2017)
 - initial version
