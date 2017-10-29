@@ -260,7 +260,7 @@ case $resp in
 esac
 
 # Try to find latest LibreELEC version number
-VLATEST=$( curl --user-agent "fogent" --silent "https://libreelec.tv/downloads" | grep -o 'LibreELEC-RPi.\.arm-.\..\..' | head -n 1 | awk -F "-" '{print $3}' )
+VLATEST=$( curl -Ls --user-agent "fogent" "https://libreelec.tv/downloads" | grep -o 'LibreELEC-RPi2\.arm-.*\.tar' | head -n 1 | awk -F "-" '{print $7}' | sed "s/....$//g" )
 echo ""
 if [ -z "${VLATEST}" ]; then
   echo "Could not identify latest version, falling-back to version ${FBVERSION}"
