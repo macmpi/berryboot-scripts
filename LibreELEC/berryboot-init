@@ -353,6 +353,7 @@ chmod 774 "${DATADIR}"/.berryboot-integ
 # hide /berryboot-init file in overlay
 touch "${DATADIR}"/.wh.berryboot-init
 
+mkdir -p "${DATADIR}"/etc
 cat /squashfs/etc/motd > "${DATADIR}"/etc/motd
 cat << "EOF" >> "${DATADIR}"/etc/motd
                        
