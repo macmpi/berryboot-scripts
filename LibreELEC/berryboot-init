@@ -287,7 +287,7 @@ touch "${DATADIR}"/usr/lib/libreelec/.wh.backup-restore
 # Is disabled by default & can not be set by UI: we do not handle for now
 # we wipe script untill someone complains (keep the script as a service does launch it)
 [ -f "${DATADIR}"/usr/lib/libreelec/mount-swap ] || { echo "#!/bin/sh" > "${DATADIR}"/usr/lib/libreelec/mount-swap; }
-
+chmod 774 "${DATADIR}"/usr/lib/libreelec/mount-swap
 
 ##################################################################
 ############    General config for LibreELEC OS boot   ############
