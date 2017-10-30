@@ -203,7 +203,7 @@ fi
 
 ####################  Now we start the actual work !...
 IMAGENAME="LibreELEC"
-FBVERSION="8.0.2"    # fallback LibreELEC version if latest can not be detected
+FBVERSION="8.2.0.1"    # fallback LibreELEC version if latest can not be detected
 BB_MEM="128"         # this corresponds to LibreELEC default 16MB gpu memory split. Change if you need different
 MODEL=""
 
@@ -234,18 +234,18 @@ read -n 1 resp
 echo ""
 case $resp in
   0)
-    MODEL=""
+    MODEL="RPi"
   ;;
   2)
-    MODEL="2"
+    MODEL="RPi2"
   ;;
   "")
     case $MODEL in
       "Pi Zero/v1")
-        MODEL=""
+        MODEL="RPi"
       ;;
       "Pi v2/v3")
-        MODEL="2"
+        MODEL="RPi2"
       ;;
       "")
         echo "Could not determine proper Pi Model, quitting..."
@@ -266,7 +266,7 @@ if [ -z "${VLATEST}" ]; then
   echo "Could not identify latest version, falling-back to version ${FBVERSION}"
   VLATEST="${FBVERSION}"
 else
-  echo "LibreELEC latest version is: ${VLATEST}"
+  echo "LibreELEC latest release version is: ${VLATEST}"
 fi
 
 
@@ -299,9 +299,9 @@ cd "${WORKDIR}"
 FILENAME="${IMAGENAME}".img"${BB_MEM}"   # LibreELEC image file name in Berryboot
 
 echo "Downloading original image from LibreELEC repo, this may take a bit of time..."
-if wget "http://archive.libreelec.tv/LibreELEC-RPi${MODEL}.arm-${VLATEST}.tar"; then
+if wget "http://archive.libreelec.tv/LibreELEC-${MODEL}.arm-${VLATEST}.tar"; then
   echo "Expanding archive..."
-  if tar --strip-components=2 -xf "LibreELEC-RPi${MODEL}.arm-${VLATEST}.tar" "LibreELEC-RPi${MODEL}.arm-${VLATEST}"/target/SYSTEM; then
+  if tar --strip-components=2 -xf "LibreELEC-${MODEL}.arm-${VLATEST}.tar" "LibreELEC-${MODEL}.arm-${VLATEST}"/target/SYSTEM; then
     echo "Obtaining patches..."
     if wget -O berryboot-init "${BBINITURL}" > /dev/null 2>&1; then
       echo "Applying patches..."
