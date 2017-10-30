@@ -56,22 +56,18 @@ echo -n "
 ######################################################
 ########### Volumio2 install on Berryboot  ###########
 ###########    version  ${INSTVOLVERSION}   by macmpi    ###########
-
-
 This script prepares and installs Volumio2 image for use under berryboot on
 Raspberry Pi
 It MUST be run under a Debian Linux OS (like Raspbian-lite) and with
 internet access.
 At first run, it may install missing Debian packages: this can take time...
 (sudo rights are needed for Debian installs, mounts and image copy)
-
 If run under Pi with berryboot (recommended), it will try to install image into
 final location (SD/USB disk encrypted or not, iSCSI).
 If not run under berryboot (Pi, PC,...), it will try to copy image to
 any connected media eventually containing a berryboot partition.
 If no berryboot data partition is detected, image file may be produced in
 working directory, for later-on use...
-
 Hit any key to continue, or \"q\" to quit "
 read -n 1 resp
 echo ""
@@ -111,9 +107,7 @@ if [ ${RUNBB} = true ]; then
     echo "
 WARNING !!! please fill/add bootdev= statement in cmdline.txt with reference to
 your berryboot environment boot partition (mmcblk0p1 or sda1 or else)
-
 Statement shall be in the following form: bootdev=mmcblk0p1 or sda1 or else
-
 Then reboot berryboot system, and try again.
 Install will now abort with no change.
 "
@@ -177,15 +171,12 @@ if ! ls "${DESTDIR}" > /dev/null 2>&1; then
   DESTDIR="$(pwd)"
   echo -n "
 Could not find any berryboot data partition !
-
 You may QUIT, and once you manually mount a target berryboot partition, you may
 relaunch and pass relevant mountpoint path as input paramater.
-
 Alternatively, you may choose to CONTINUE, and this script will produce image
 file into ${DESTDIR} directory.
 You may then move that image later-on yourself into \"images\" directory,
 within your berryboot data partition.  
-
 Hit any key to continue, or \"q\" to quit : "
   read -n 1 resp
   echo ""
@@ -208,13 +199,13 @@ BB_MEM="240"         # this corresponds to Volumio default 16MB gpu memory split
 
 
 # Try to find latest Volumio2 version number
-VLATEST=$( curl --user-agent "fogent" --silent "https://volumio.org/get-started/#pi" | grep -o 'http:\/\/updates.volumio.org\/pi\/volumio\/.\....' | awk -F "/" '{print $6}' )
+VLATEST=$( curl -Ls --user-agent "fogent" "https://volumio.org/get-started/#pi" | grep -o 'http:\/\/updates.volumio.org\/pi\/volumio\/.\....' | awk -F "/" '{print $6}' )
 echo ""
 if [ -z "${VLATEST}" ]; then
   echo "Could not identify latest version, falling-back to version ${FBVERSION}"
   VLATEST="${FBVERSION}"
 else
-  echo "Volumio2 latest version is: ${VLATEST}"
+  echo "Volumio2 latest release version is: ${VLATEST}"
 fi
 
 
