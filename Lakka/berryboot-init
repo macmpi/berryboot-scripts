@@ -1,1 +1,390 @@
+#!/bin/busybox sh
 
+# Source & license at https://github.com/macmpi/berryboot-scripts
+# Feel free to report any issue or comment there.
+
+
+### This file resides in Lakka read-only squashfs image
+# This script does Lakka backoffice supervisor stuff, similarly to Lakka original init
+# It is run by berryboot init BEFORE aufs overlay filesystem is composed
+#
+# Note: it is run under Berryboot busybox, with root privileges
+# this script is inlined into berryboot init, so be careful about variables, cd, ...
+#
+# we can use (but shall not modify) the following variables:
+#
+# IMAGE=`cat /tmp/answer`
+# DATADIR="/mnt/data/$IMAGE"
+# SHAREDDIR="/mnt/shared"
+# IMAGEPATH="/mnt/images/$IMAGE"
+# GOVERNOR
+
+ENTRYPATH=$(pwd)     # we are now safe to eventually change directory
+
+
+############## Self-patch init sequence and relaunch from next banner ##################
+# Required until https://github.com/maxnet/berryboot/pull/437 is resolved
+# berryboot-init is inlined into /init, but the file resides in /squashfs.
+# Therefore, while running, it prevents un-mounting squashfs image and then update image.
+# So the trick here is to relaunch this script (and following part of init) from another
+# location, hence exiting/freeing this original file...  (circumvoluted?  humm... yes! :p)
+
+echo ""
+echo "Prepping script relocation..."
+
+# we construct relocated all-in-one init script
+echo "#!/bin/busybox sh" > /reloc-init
+# we keep this script from next banner to execute beyond that point
+sed -n -e '/^#* We start from here !! #*/,$p' /squashfs/berryboot-init >> /reloc-init
+# we append the remaining part of inird
+sed -n -e '/^.*# Fedora and Arch symlink.*/,$p' /init >> /reloc-init
+chmod 770 /reloc-init
+
+# we need to make sure our new /reloc-init can access insofar variables we (and init) need
+export IMAGE
+export DATADIR
+export SHAREDDIR
+export IMAGEPATH
+export GOVERNOR
+export ENTRYPATH
+
+echo "Now we will continue from another location... see you soon !!"
+exec /reloc-init   # exec ensures we keep PID 1, which is required for switch_root
+
+# now we are gone in hyperspace !!!
+
+
+###################### We start from here !! ###########################
+
+BBINITVERSION="1.0"
+
+# due to wget https limitation in berryboot:
+# https://github.com/maxnet/berryboot/issues/439
+# we need http only, so we can not link to github for now....
+# will be redirected to Github as soon as possible
+BBINITURL="http://bit.do/BBInitLk"    
+
+
+echo "
+###################################################
+########### Lakka Berryboot Integration ###########
+###########  version  ${BBINITVERSION}    by macmpi  ###########
+"
+
+
+################ generic log utiliy function ###################
+# Display a message and aggregate it for Lakka journalctl
+LOGFILE="/data/Lklog.txt"   # Lakka OS will consume it
+
+print_msg() {
+  echo "$1" | tee -a /mnt"${LOGFILE}"
+}
+
+
+########### detect Partitions devices  ######################
+
+# boot partition may not be set by berryboot install in cmdline.txt: that is dangerous!
+BOOT_PART=""
+CMDLINE=$(cat /proc/cmdline)
+
+for p in ${CMDLINE};
+do
+  key=${p%%=*}
+  value=${p#*=}
+  
+  case $key in
+  bootdev)
+    BOOT_PART=$value    # does not include /dev name part
+    ;;
+  esac
+done
+
+# sanity-check
+if [ -z "${BOOT_PART}" ]; then
+  echo "
+WARNING !!!  Please check & edit bootdev= statement in cmdline.txt on your
+Berryboot boot partiton. cmdline.txt MUST have a proper bootdev definition
+statement:   bootdev=mmcblk0p1 or =sda1 or other relevant boot partition
+Device will now halt in few seconds"
+  sync
+  umount /mnt
+  sleep 10
+  halt -f
+else
+  BOOT_PART="/dev/${BOOT_PART}"
+fi
+
+
+# Berryboot data partiton (always exists at this point) may not be directly the one specified in
+# cmdline.txt by datadev= , namely in case of complex mounts such as encrypted partitions or iSCSI
+# so we look at which device corresponds to /mnt currently, as berryboot has completed it's own mounting work here
+# in case of encrypted partitions, fstab mount requires mount by UUID, so we always use it
+DATA_PART=$(df | egrep "/mnt" | awk '{print $1}')
+
+print_msg "Partitions found:  boot: ${BOOT_PART}   berryboot data: ${DATA_PART}"
+
+########### Sanity-checks finished #######
+
+
+
+###########################################################
+############## Lakka Reset & Updates functions ############
+###########################################################
+
+
+################# LibreELEC-Lakka Updates section ##########################
+# Now we setup things so that LibreELEC-lakka built-in updates work.
+# We check if such update has been done previously, in order to replace image.
+# Note: after update we relaunch new-image script with it's own script do new own setup
+# so we stay away from any significant changes before doing update (do that first)
+
+
+# monitor /storage/.update directory (within overlay) that receives OS updates from LibreELEC app.
+UPDTDIR="${DATADIR}/storage/.update"
+if [ ! -d "${UPDTDIR}" ]; then
+  mkdir -p "${UPDTDIR}"
+  chmod 777 "${UPDTDIR}"
+fi
+
+cd "${UPDTDIR}"
+
+UPDATE_TAR=$( basename ./*.tar .tar | head -n 1 )
+UPDATE_IMG_GZ=$( basename ./*.img.gz .img.gz | head -n 1 )
+UPDATE_IMG=$( basename ./*.img .img | head -n 1)
+
+if [ -f "${UPDATE_TAR}".tar ]; then
+  print_msg "Extracting archive update file..."  
+  if tar -xf "${UPDATE_TAR}".tar "${UPDATE_TAR}"/target/SYSTEM > /dev/null 2>&1; then  
+    mv "${UPDATE_TAR}"/target/SYSTEM "${IMAGE}"
+  else
+    print_msg "Update extraction failed, keeping current image"
+  fi
+elif [ -f "$UPDATE_IMG_GZ".img.gz -o -f "$UPDATE_IMG".img ]; then
+  if [ -f "$UPDATE_IMG_GZ".img.gz ]; then
+    print_msg "Decompressing image update file...(this may be *very* long)"
+    if gunzip "$UPDATE_IMG_GZ".img.gz > /dev/null 2>&1; then
+      UPDATE_IMG="$UPDATE_IMG_GZ"
+      sync
+    else
+      print_msg "Image file decompression failed"
+    fi
+  fi
+  print_msg "Extracting image update file..."
+  LOOP=$(losetup -f)
+  LOOP_NUM=$(echo $LOOP | sed 's|/dev/loop||')
+  mknod $LOOP b 7 $LOOP_NUM > /dev/null 2>&1
+  losetup $LOOP "$UPDATE_IMG".img > /dev/null 2>&1
+  
+  # check for MBR partititon
+  OFFSET=$(fdisk -u -l $LOOP 2>/dev/null | awk '/^[ ]*Device/{part=1; next}; part{if ($2 == "*") {print $3} else {print $2} ; exit}')
+  if [ -z "$OFFSET" ]; then
+    # check for GPT partititon
+    OFFSET=$(fdisk -u -l $LOOP 2>/dev/null | awk '/^Number/{part=1; next}; part{print $2; exit}')    
+  fi
+  
+  if [ ! -z "$OFFSET" ]; then
+    SECTOR_SIZE=$(cat /sys/devices/virtual/block/loop${LOOP_NUM}/queue/hw_sector_size)
+    losetup -d $LOOP > /dev/null 2>&1
+    sync
+  
+    OFFSET=$(($OFFSET * $SECTOR_SIZE))
+    losetup -o $OFFSET $LOOP "$UPDATE_IMG".img > /dev/null 2>&1
+    mkdir -p .tmp/mnt
+    if mount -t vfat -o ro,loop $LOOP .tmp/mnt > /dev/null 2>&1; then
+      cp .tmp/mnt/SYSTEM "${IMAGE}"
+      sync
+      umount .tmp/mnt
+    else
+      print_msg "Incorrect image update file, keeping current image"
+    fi  
+    losetup -d $LOOP > /dev/null 2>&1
+  else 
+    print_msg "No valid system partition in image file, keeping current image"
+ fi
+fi
+
+
+if [ -f "${IMAGE}" ]; then
+  print_msg "Installing updated image"
+  # we try to get latest patches from network or fallback with existing ones
+  if ! wget -O berryboot-init "${BBINITURL}" > /dev/null 2>&1; then
+    cp /squashfs/berryboot-init .
+  fi
+  chmod ug+x berryboot-init   # needed because we will relaunch with exec command, not inline
+  print_msg "Patching updated image"
+  if mksquashfs ./berryboot-init "${IMAGE}" > /dev/null 2>&1; then
+    print_msg "Unmounting previous image and replacing with new"
+    umount -f /squashfs  # we are now running from /reloc-init so we should be safe to keep running!...
+    mv -f "${IMAGE}" "${IMAGEPATH}"
+    rm -rf "${UPDTDIR:?}"/*
+    sync
+    clear
+    print_msg "Mounting Updated image ${IMAGE}"
+    mount -o loop,ro "${IMAGEPATH}" /squashfs
+    cd "${ENTRYPATH}"
+    print_msg "Relaunching with updated image & init..."
+    exec /squashfs/berryboot-init   # exec ensures we keep PID 1
+  else
+      print_msg "Patching new image failed, keeping current image"
+  fi
+fi
+
+rm -rf "${UPDTDIR:?}"/*
+
+
+
+
+########### Clean-up dangerous stuff ###########
+# There is a /flash recovery version in /usr/share/bootloader used by init (& elsewhere?)
+# One may remount /flash in read-write to update it or do recovery
+# as we do not want that to happen so we do hide that content in overlay.
+mkdir -p "${DATADIR}"/usr/share
+touch "${DATADIR}"/usr/share/.wh.bootloader
+
+mkdir -p "${DATADIR}"/usr/lib/libreelec
+# Hide fs-resize baseline script as we do not want it to be run at runtime
+touch "${DATADIR}"/usr/lib/libreelec/.wh.fs-resize
+
+########### Swap management ###########
+# LibreELEC swap depends about /usr/lib/libreelec/mount-swap and /etc/swap.conf
+# Is disabled by default & can not be set by UI: we do not handle for now
+# we wipe script untill someone complains (keep the script as a service does launch it)
+[ -f "${DATADIR}"/usr/lib/libreelec/mount-swap ] || { echo "#!/bin/sh" > "${DATADIR}"/usr/lib/libreelec/mount-swap; }
+chmod 774 "${DATADIR}"/usr/lib/libreelec/mount-swap
+
+##################################################################
+############    General config for Lakka OS boot   ############
+##################################################################
+
+BBMOUNT="/berryboot"
+
+
+################ berryboot-integ script & systemd service ###################################
+# setup berryboot-integ script and related systemd service to launch berryboot-integ at Lakka OS startup
+# This allows to mount partitions and issue pre-boot berryboot-phase log into system journal
+# Lakka init mounts boot partition as read-only in /flash, so we do same.
+
+mkdir -p "${DATADIR}"/usr/lib/systemd/system
+mkdir -p "${DATADIR}"/usr/lib/systemd/system/multi-user.target.wants
+
+print_msg "Creating Berryboot integration systemd service for Lakka OS"
+
+echo "[Unit]
+Description = Berryboot integration service
+
+After=network.target
+
+[Service]
+Type=simple
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=berryboot-integ
+User=root
+Group=root
+ExecStartPre=/bin/mkdir -p ${BBMOUNT}
+ExecStartPre=/bin/mount ${DATA_PART} ${BBMOUNT} -o defaults 
+ExecStartPre=/bin/mount -t vfat ${BOOT_PART} /flash -o ro,noatime
+ExecStart=/bin/sh /.berryboot-integ
+
+[Install]
+WantedBy=multi-user.target" > "${DATADIR}"/usr/lib/systemd/system/berryboot-integ.service
+
+# Enable Systemd service
+ln -s /usr/lib/systemd/system/berryboot-integ.service "${DATADIR}"/usr/lib/systemd/system/multi-user.target.wants/berryboot-integ.service > /dev/null 2>&1
+
+
+# berryboot-integ script is always restored in original state
+echo "#!/bin/sh
+
+### This file resides in Lakka image overlay filesystem
+# It is run as root during Lakka OS image startup through Systemd service.
+# As Lakka OS boots from aufs overlayed filesystem, one may modify this file
+# but such changes will have not effect at next boot, as file is restored in original state
+
+# dump early berryboot-init log file into system journal
+cat  ${BBMOUNT}${LOGFILE}
+rm  ${BBMOUNT}${LOGFILE} > /dev/null 2>&1
+
+echo Now fixing Lakka startup overlayfs mounts 
+ln -s /usr/share/retroarch-assets /tmp/assets
+[ -h /storage/assets ] || { ln -s /usr/share/retroarch-assets /storage/assets; }
+
+ln -s /usr/lib/libretro /tmp/cores
+[ -h storage/cores ] || { ln -s /usr/lib/libretro storage/cores; }
+
+ln -s /usr/share/libretro-database /tmp/database
+[ -h /storage/database ] || { ln -s /usr/share/libretro-database /storage/database; }
+
+ln -s /etc/retroarch-joypad-autoconfig /tmp/joypads
+[ -h /storage/joypads ] || { ln -s /etc/retroarch-joypad-autoconfig /storage/joypads; }
+
+ln -s /usr/share/common-shaders /tmp/shaders
+[ -h /storage/shaders ] || { ln -s /usr/share/common-shaders /storage/shaders; }
+
+echo We are all set !
+" > "${DATADIR}"/.berryboot-integ
+
+chmod 774 "${DATADIR}"/.berryboot-integ
+
+
+# Hide related mount scripts and their retroarch.target.wants
+mkdir -p "${DATADIR}"/usr/lib/systemd/system/retroarch.target.wants
+
+touch "${DATADIR}"/usr/lib/systemd/system/.wh.tmp-assets.mount
+touch "${DATADIR}"/usr/lib/systemd/system/retroarch.target.wants/.wh.tmp-assets.mount
+
+touch "${DATADIR}"/usr/lib/systemd/system/.wh.tmp-cores.mount
+touch "${DATADIR}"/usr/lib/systemd/system/retroarch.target.wants/.wh.tmp-cores.mount
+
+touch "${DATADIR}"/usr/lib/systemd/system/.wh.tmp-database.mount
+touch "${DATADIR}"/usr/lib/systemd/system/retroarch.target.wants/.wh.tmp-database.mount
+
+touch "${DATADIR}"/usr/lib/systemd/system/.wh.tmp-joypads.mount
+touch "${DATADIR}"/usr/lib/systemd/system/retroarch.target.wants/.wh.tmp-joypads.mount
+
+touch "${DATADIR}"/usr/lib/systemd/system/.wh.tmp-shaders.mount
+touch "${DATADIR}"/usr/lib/systemd/system/retroarch.target.wants/.wh.tmp-shaders.mount
+
+
+
+#############################################################
+###############         now some FUN  !!!!       ############
+#############################################################
+
+# hide /berryboot-init file in overlay
+touch "${DATADIR}"/.wh.berryboot-init
+
+mkdir -p "${DATADIR}"/etc
+cat /squashfs/etc/issue > "${DATADIR}"/etc/issue
+cat << "EOF" >> "${DATADIR}"/etc/issue
+                       
+                       /\/\/\/\/\/\  
+                      <            >
+                       |          |
+                       |          |
+                       |   _  _   |
+                      -|_ / \/ \_ |-
+                     |I|  \_/\_/  |I|       Change is good.
+                      -|   /  \   |-         You go first.
+                       |   \__/   |
+                       |          |
+                       |          |
+                       |__________|
+                      /___/\__/\___\ 
+                     /     | \|     \ 
+                       /\  |\ | _@|#_
+                      / /\ | \| |   |
+                      \/  / \ / |   |
+                       \_/___/   \_/ 
+
+
+Reminder: we run under berryboot kernel now...
+
+EOF
+
+sync
+cd "${ENTRYPATH}"
+print_msg "Now we can finally boot Lakka image..., go!"
+echo ""
+
+# now we follow into the remaining of berryboot init...
