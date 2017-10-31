@@ -1,6 +1,6 @@
 # Scripts for Lakka
 
-This integration supports all Lakka (Libretto/RetroArch) native functions, including software updates, etc...
+This integration supports all Lakka (Libretro-RetroArch) native functions, including software updates, etc...
 
 
 Short tip: from any Debian-based distribution (Raspbian under berryboot advised), run the following 1-line command:
