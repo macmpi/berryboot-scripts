@@ -1,5 +1,5 @@
 # berryboot integration scripts
-Repo for (hopefully) usefull berryboot integration scripts for few popular distributions
+Repo for (hopefully) usefull [berryboot](http://www.berryterminal.com/doku.php/berryboot) integration scripts for few popular distributions
 
 For each supported Distibution, a 1-line shell command is provided to run the installer which downloads a genuine image, patches-it, and then installs it for use inside berryboot.
 
