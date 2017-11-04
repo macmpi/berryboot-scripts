@@ -147,8 +147,6 @@ fi
 ##################  Determine where to land image file
 
 if [ -z "${MOUNTDIR}" ]; then
-  MOUNTDIR="$(pwd)/berryboot"
-  mkdir -p "${MOUNTDIR}"
     
   CRYPT_PART=$( sudo blkid | egrep "TYPE=\"crypto_LUKS\"" | awk -F ":" '{print $1}' )
   if [ ! -z "${CRYPT_PART}" ] && [ ${RUNBB} = false ]; then   # not on berryboot but encrypted data partition plugged-in
@@ -164,6 +162,8 @@ if [ -z "${MOUNTDIR}" ]; then
     echo ""
     if [ "${resp}" != "n" ]; then
       # on Berryboot: mounts any type (std, encrypted, iscsi); on other cases all mounted except iscsi  
+      MOUNTDIR="$(pwd)/berryboot"
+      mkdir -p "${MOUNTDIR}"
       sudo mount "${p}" "${MOUNTDIR}" > /dev/null 2>&1  
       break
     fi
