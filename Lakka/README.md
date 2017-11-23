@@ -21,7 +21,7 @@ In `cmdline.txt` file on boot partition, you MUST set `bootdev=` parameter to po
 
 
 ### supported features:
-- Software update through Lakka UI (note: updated image will automatically be patched with latest patch version available)
+- ~~Software update through Lakka UI~~ (note: updated image will automatically be patched with latest patch version available) will work as soon as a [longstanding Lakka/RetroArch bug](https://github.com/libretro/Lakka-LibreELEC/issues/281) is fixed...
 - patch log available in system journal
 
 
