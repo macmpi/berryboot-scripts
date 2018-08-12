@@ -29,6 +29,9 @@ In `cmdline.txt` file on boot partition, you MUST set `bootdev=` parameter to po
 
 
 ### changelog:
+1.2:  (August 12th 2018)
+- support for Milhouse [custom beta builds install](https://forum.kodi.tv/showthread.php?tid=298461)
+
 1.1:  (October 29th 2017)
 - support all update files
 
