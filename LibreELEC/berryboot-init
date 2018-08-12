@@ -56,7 +56,7 @@ exec /reloc-init   # exec ensures we keep PID 1, which is required for switch_ro
 
 ###################### We start from here !! ###########################
 
-BBINITVERSION="1.1"
+BBINITVERSION="1.2"
 
 # due to wget https limitation in berryboot:
 # https://github.com/maxnet/berryboot/issues/439
@@ -167,8 +167,8 @@ UPDATE_IMG=$( basename ./*.img .img | head -n 1)
 
 if [ -f "${UPDATE_TAR}".tar ]; then
   print_msg "Extracting archive update file..."  
-  if tar -xf "${UPDATE_TAR}".tar "${UPDATE_TAR}"/target/SYSTEM > /dev/null 2>&1; then  
-    mv "${UPDATE_TAR}"/target/SYSTEM "${IMAGE}"
+  if tar -xf "${UPDATE_TAR}".tar $( tar -tf "${UPDATE_TAR}".tar | grep 'SYSTEM$' ) > /dev/null 2>&1; then  
+    mv */target/SYSTEM "${IMAGE}"
   else
     print_msg "Update extraction failed, keeping current image"
   fi
