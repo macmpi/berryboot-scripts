@@ -3,10 +3,10 @@
 # Source & license at https://github.com/macmpi/berryboot-scripts
 # Feel free to report any issue or comment there.
 
-INSTLEVERSION="1.0"
+INSTLEVERSION="1.1"
 
-BBINITURL="http://bit.do/BBInitLE"    
-INSTLEURL="http://bit.do/InstLE"  
+BBINITURL="https://bit.ly/BBInitLibreELEC"    
+INSTLEURL="https://bit.ly/InstLibreELEC"  
 
 
 MOUNTDIR=${1:-""}
