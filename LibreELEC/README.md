@@ -5,7 +5,7 @@ This integration supports all [LibreELEC](https://libreelec.tv/) native function
 
 Short tip: from any Debian-based distribution (Raspbian under berryboot advised), run the following 1-line command:
 ```
-curl -Ls --output installLibreELEC http://bit.do/InstLE; chmod u+x installLibreELEC; ./installLibreELEC
+curl -Ls --output installLibreELEC https://bit.ly/InstLibreELEC; chmod u+x installLibreELEC; ./installLibreELEC
 ```
 and follow onscreen instructions to install a patched LibreELEC image on your berryboot media.
 
@@ -29,6 +29,9 @@ In `cmdline.txt` file on boot partition, you MUST set `bootdev=` parameter to po
 
 
 ### changelog:
+1.3:  (October 28th 2018)
+- change redirector
+
 1.2:  (August 12th 2018)
 - support for Milhouse [custom beta builds install](https://forum.kodi.tv/showthread.php?tid=298461)
 
