@@ -33,7 +33,7 @@ In `cmdline.txt` file on boot partition, you MUST set `bootdev=` parameter to po
 
 
 ### changelog:
-1.1:  (October 28th 2018)
+1.2:  (October 28th 2018)
 - change redirector
 
 1.1:  (October 28th 2017)
