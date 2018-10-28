@@ -3,10 +3,10 @@
 # Source & license at https://github.com/macmpi/berryboot-scripts
 # Feel free to report any issue or comment there.
 
-INSTVOLVERSION="1.0"
+INSTVOLVERSION="1.1"
 
-BBINITURL="http://bit.do/BBInitV2"    
-INSTV2URL="http://bit.do/InstV2"  
+BBINITURL="https://bit.ly/BBInitVolumio2"    
+INSTV2URL="https://bit.ly/InstVolumio2"  
 
 
 MOUNTDIR=${1:-""}
