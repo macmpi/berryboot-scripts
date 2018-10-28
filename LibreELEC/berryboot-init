@@ -56,13 +56,9 @@ exec /reloc-init   # exec ensures we keep PID 1, which is required for switch_ro
 
 ###################### We start from here !! ###########################
 
-BBINITVERSION="1.2"
+BBINITVERSION="1.3"
 
-# due to wget https limitation in berryboot:
-# https://github.com/maxnet/berryboot/issues/439
-# we need http only, so we can not link to github for now....
-# will be redirected to Github as soon as possible
-BBINITURL="http://bit.do/BBInitLE"    
+BBINITURL="https://bit.ly/BBInitLibreELEC"    
 
 
 echo "
