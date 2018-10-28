@@ -58,10 +58,6 @@ exec /reloc-init   # exec ensures we keep PID 1, which is required for switch_ro
 
 BBINITVERSION="1.1"
 
-# due to wget https limitation in berryboot:
-# https://github.com/maxnet/berryboot/issues/439
-# we need http only, so we can not link to github for now....
-# will be redirected to Github as soon as possible
 BBINITURL="https://bit.ly/BBInitLakka"    
 
 
