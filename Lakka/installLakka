@@ -3,10 +3,10 @@
 # Source & license at https://github.com/macmpi/berryboot-scripts
 # Feel free to report any issue or comment there.
 
-INSTALLVERSION="1.0"
+INSTALLVERSION="1.1"
 
-BBINITURL="http://bit.do/BBInitLk"    
-INSTALLURL="http://bit.do/InstLk"  
+BBINITURL="https://bit.ly/BBInitLakka"    
+INSTALLURL="https://bit.ly/InstLakka"  
 
 
 MOUNTDIR=${1:-""}
