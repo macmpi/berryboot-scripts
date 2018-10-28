@@ -5,7 +5,7 @@ This integration supports all [Lakka](http://www.lakka.tv/) (Libretro-RetroArch)
 
 Short tip: from any Debian-based distribution (Raspbian under berryboot advised), run the following 1-line command:
 ```
-curl -Ls --output installLakka http://bit.do/InstLk; chmod u+x installLakka; ./installLakka
+curl -Ls --output installLakka https://bit.ly/InstLakka; chmod u+x installLakka; ./installLakka
 ```
 and follow onscreen instructions to install a patched Lakka image on your berryboot media.
 
@@ -27,5 +27,8 @@ In `cmdline.txt` file on boot partition, you MUST set `bootdev=` parameter to po
 
 
 ### changelog:
+1.0:  (October 28th 2018)
+- change redirector
+
 1.0:  (October 31st 2017)
 - initial version
