@@ -7,7 +7,7 @@ You may refer [here](https://volumio.org/forum/multiboot-volumio2-with-kodi-unde
 
 Short tip: from any Debian-based distribution (Raspbian under berryboot advised), run the following 1-line command:
 ```
-curl -Ls --output installVolumio2 http://bit.do/InstV2; chmod u+x installVolumio2; ./installVolumio2
+curl -Ls --output installVolumio2 https://bit.ly/InstVolumio2; chmod u+x installVolumio2; ./installVolumio2
 ```
 and follow onscreen instructions to install a patched Volumio2 image on your berryboot media.
 
@@ -33,6 +33,9 @@ In `cmdline.txt` file on boot partition, you MUST set `bootdev=` parameter to po
 
 
 ### changelog:
+1.1:  (October 28th 2018)
+- change redirector
+
 1.1:  (October 28th 2017)
 - improve `/boot` & `/berryboot` mounts scheduling and `dynamicswap.service` dependency
 - clean-up MrEngman drivers .conf
