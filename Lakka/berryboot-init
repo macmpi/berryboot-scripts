@@ -79,7 +79,8 @@ print_msg() {
 
 ########### detect Partitions devices  ######################
 
-# boot partition may not be set by berryboot install in cmdline.txt: that is dangerous!
+# Actual berryboot boot partition is unknown and not mounted, so it can only be determined
+# by reading cmdline.txt. However berryboot install may not set it in default SD setup!
 BOOT_PART=""
 CMDLINE=$(cat /proc/cmdline)
 
