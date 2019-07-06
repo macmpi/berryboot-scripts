@@ -91,7 +91,7 @@ do
   
   case $key in
   bootdev)
-    BOOT_PART=$value    # does not include /dev name part
+    BOOT_PART=$value    
     ;;
   esac
 done
@@ -103,8 +103,6 @@ WARNING !!!  we assume Pi boots-off SD card as cmdline.txt does not
 explicitly set boot device with bootdev= statement. Edit cmdline.txt if
 you intend to boot from another device."
   BOOT_PART="/dev/mmcblk0p1"
-else
-  BOOT_PART="/dev/${BOOT_PART}"
 fi
 
 
