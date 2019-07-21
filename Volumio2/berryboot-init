@@ -99,10 +99,27 @@ done
 # sanity-check
 if [ -z "${BOOT_PART}" ]; then
   echo "
-WARNING !!!  we assume Pi boots-off SD card as cmdline.txt does not
+WARNING !!!  We will assume Pi boots-off SD card as cmdline.txt does not
 explicitly set boot device with bootdev= statement. Edit cmdline.txt if
 you intend to boot from another device."
   BOOT_PART="/dev/mmcblk0p1"
+
+elif ( ls /dev/disk/by-uuid | grep -q "${BOOT_PART}"$ ); then
+  BOOT_PART="/dev/disk/by-uuid/"${BOOT_PART}
+  # fully qualify UUID reference to ensure mounting
+
+else    # check device name & eventually complete if partial
+  BOOT_PART=$(ls /dev/* | grep "${BOOT_PART}"$)
+  # can result in empty path if device not found or wrong UUID!
+fi
+
+
+if [ -z "${BOOT_PART}" ]; then
+  echo "
+WARNING !!!  Something went wrong with bootdev definition: we will
+NOT be able to mount boot partition. Edit cmdline.txt to properly
+set bootdev= parameter."
+  sleep 1	
 fi
 
 
