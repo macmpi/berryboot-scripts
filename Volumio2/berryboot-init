@@ -97,7 +97,7 @@ do
 done
 
 # sanity-check
-BOOT_PART=${BOOT_PART/UUID=/}   # extract actual UUID out of UUID=XXX if any
+BOOT_PART=${BOOT_PART/#UUID=/}   # extract actual UUID out of UUID=XXX if any
 
 if [ -z "${BOOT_PART}" ]; then
   echo "
