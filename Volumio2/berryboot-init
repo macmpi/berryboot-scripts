@@ -97,6 +97,8 @@ do
 done
 
 # sanity-check
+BOOT_PART=${BOOT_PART/UUID=/}   # extract actual UUID out of UUID=XXX if any
+
 if [ -z "${BOOT_PART}" ]; then
   echo "
 WARNING !!!  We will assume Pi boots-off SD card as cmdline.txt does not
