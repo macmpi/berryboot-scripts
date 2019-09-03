@@ -100,11 +100,7 @@ done
 BOOT_PART=${BOOT_PART/#UUID=/}   # extract actual UUID out of UUID=XXX if any
 
 if [ -z "${BOOT_PART}" ]; then
-  echo "
-WARNING !!!  We will assume Pi boots-off SD card as cmdline.txt does not
-explicitly set boot device with bootdev= statement. Edit cmdline.txt if
-you intend to boot from another device."
-  BOOT_PART="/dev/mmcblk0p1"
+  BOOT_PART="/dev/mmcblk0p1"   # default berryboot convention
 
 elif ( ls /dev/disk/by-uuid | grep -q "${BOOT_PART}"$ ); then
   BOOT_PART="/dev/disk/by-uuid/"${BOOT_PART}
