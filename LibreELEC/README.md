@@ -28,6 +28,9 @@ That patched image will then natively support all features, as would the standal
 
 
 ### changelog:
+1.5:  (September 4th 2019)
+- supports berryboot 20190612 & later
+
 1.4:  (December 31st 2018)
 - bootdev= parameter in cmdline.txt not mandatory anymore
 
