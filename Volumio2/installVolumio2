@@ -3,7 +3,7 @@
 # Source & license at https://github.com/macmpi/berryboot-scripts
 # Feel free to report any issue or comment there.
 
-INSTVOLVERSION="1.1"
+INSTVOLVERSION="1.2"
 
 BBINITURL="https://bit.ly/BBInitVolumio2"    
 INSTV2URL="https://bit.ly/InstVolumio2"  
@@ -80,40 +80,6 @@ fi
 RUNBB=false
 
 ! uname -r | grep "\-aufs" > /dev/null 2>&1  || { echo >&2 "berryboot kernel detected !! "; RUNBB=true; }
-
-#############   berryboot-specific sanity check
-# We check if bootdev is properly set in cmdline.txt
-
-BOOT_PART=""
-
-if [ ${RUNBB} = true ]; then
-  echo "Checking berryboot partitions setup"
-
-  CMDLINE=$(cat /proc/cmdline)
-
-  for p in ${CMDLINE};
-  do
-    key=${p%%=*}
-    value=${p#*=}
-  
-    case $key in
-    bootdev)
-      BOOT_PART=$value
-      ;;
-    esac
-  done
-
-  if [ -z "${BOOT_PART}" ]; then
-    echo "
-WARNING !!! please fill/add bootdev= statement in cmdline.txt with reference to
-your berryboot environment boot partition (mmcblk0p1 or sda1 or else)
-Statement shall be in the following form: bootdev=mmcblk0p1 or sda1 or else
-Then reboot berryboot system, and try again.
-Install will now abort with no change.
-"
-    exit 1
-  fi
-fi
 
 
 # Install required Debian tool packages if needed

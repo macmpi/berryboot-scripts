@@ -56,7 +56,7 @@ exec /reloc-init   # exec ensures we keep PID 1, which is required for switch_ro
 
 ###################### We start from here !! ###########################
 
-BBINITVERSION="1.2"
+BBINITVERSION="1.5"
 
 BBINITURL="https://bit.ly/BBInitVolumio2"    
 
@@ -79,7 +79,8 @@ print_msg() {
 
 ########### detect Partitions devices  ######################
 
-# boot partition may not be set by berryboot install in cmdline.txt: that is dangerous!
+# Actual berryboot boot partition is unknown and not mounted, so it can only be determined
+# by reading cmdline.txt. However berryboot install may not set it in default SD setup!
 BOOT_PART=""
 CMDLINE=$(cat /proc/cmdline)
 
@@ -90,24 +91,33 @@ do
   
   case $key in
   bootdev)
-    BOOT_PART=$value    # does not include /dev name part
+    BOOT_PART=$value    
     ;;
   esac
 done
 
 # sanity-check
+BOOT_PART=${BOOT_PART/#UUID=/}   # extract actual UUID out of UUID=XXX if any
+
+if [ -z "${BOOT_PART}" ]; then
+  BOOT_PART="/dev/mmcblk0p1"   # default berryboot convention
+
+elif ( ls /dev/disk/by-uuid | grep -q "${BOOT_PART}"$ ); then
+  BOOT_PART="/dev/disk/by-uuid/"${BOOT_PART}
+  # fully qualify UUID reference to ensure mounting
+
+else    # check device name & eventually complete if partial
+  BOOT_PART=$(ls /dev/* | grep "${BOOT_PART}"$)
+  # can result in empty path if device not found or wrong UUID!
+fi
+
+
 if [ -z "${BOOT_PART}" ]; then
   echo "
-WARNING !!!  Please check & edit bootdev= statement in cmdline.txt on your
-Berryboot boot partiton. cmdline.txt MUST have a proper bootdev definition
-statement:   bootdev=mmcblk0p1 or =sda1 or other relevant boot partition
-Device will now halt in few seconds"
-  sync
-  umount /mnt
-  sleep 10
-  halt -f
-else
-  BOOT_PART="/dev/${BOOT_PART}"
+WARNING !!!  Something went wrong with bootdev definition: we will
+NOT be able to mount boot partition. Edit cmdline.txt to properly
+set bootdev= parameter."
+  sleep 1	
 fi
 
 

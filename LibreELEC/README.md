@@ -15,7 +15,6 @@ That patched image will then natively support all features, as would the standal
 
 #### Prerequisite(s):
 - *the obvious:* install Berryboot on a media, and do initial setup as per [this](http://www.berryterminal.com/doku.php/berryboot) (screen & keyboard strongly advised).
-In `cmdline.txt` file on boot partition, you MUST set `bootdev=` parameter to point to the used berryboot boot partition such as `mmcblk0p1` or `sda1` (berryboot installer does not always do it, which may cause issues). Reboot after the change.
 
 - **either** (preferred) install Raspbian image (lite is fine) under berryboot and open shell there, **or** plug your configured berryboot media into any Debian-based Linux machine under shell (Ubuntu & derivatives, Mint, Pixel, Debian, etc...)
 
@@ -29,6 +28,12 @@ In `cmdline.txt` file on boot partition, you MUST set `bootdev=` parameter to po
 
 
 ### changelog:
+1.5:  (September 4th 2019)
+- supports berryboot 20190612 & later
+
+1.4:  (December 31st 2018)
+- bootdev= parameter in cmdline.txt not mandatory anymore
+
 1.3:  (October 28th 2018)
 - change redirector
 
