@@ -166,7 +166,7 @@ fi
 
 ####################  Now we start the actual work !...
 IMAGENAME="LibreELEC"
-FBVERSION="8.2.0.1"    # fallback LibreELEC version if latest can not be detected
+FBVERSION="9.0.2"    # fallback LibreELEC version if latest can not be detected
 BB_MEM="128"         # this corresponds to LibreELEC default 16MB gpu memory split. Change if you need different
 MODEL=""
 
@@ -223,7 +223,7 @@ case $resp in
 esac
 
 # Try to find latest LibreELEC version number
-VLATEST=$( curl -Ls --user-agent "fogent" "https://libreelec.tv/downloads" | grep -o 'LibreELEC-RPi2\.arm-.*\.tar' | head -n 1 | awk -F "-" '{print $7}' | sed "s/....$//g" )
+VLATEST=$( curl -Ls --user-agent "fogent" "http://archive.libreelec.tv/?C=N;O=D" | grep -o 'LibreELEC-'$MODEL'\.arm-.*\.[0-9]\.[0-9]\.tar' | head -n 1 | awk -F "-" '{print $5}' | sed "s/....$//g" )
 echo ""
 if [ -z "${VLATEST}" ]; then
   echo "Could not identify latest version, falling-back to version ${FBVERSION}"
