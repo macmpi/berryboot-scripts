@@ -180,6 +180,9 @@ case $MODEL in
   armv7l)
     MODEL="Pi v2/v3"
   ;;
+  aarch64)
+    MODEL="Pi v4"
+  ;;
   *)
     MODEL=""
   ;;
@@ -188,9 +191,9 @@ esac
 echo ""
 if [ ! -z "${MODEL}" ]; then
   echo -n "We detected ${MODEL} model. Please hit [ENTER] to confirm,
-or type \"0\" for Pi Zero/v1, or \"2\" for Pi v2/v3: "
+or type \"0\" for Pi Zero/v1, or \"2\" for Pi v2/v3, or \"4\" for Pi v4: "
 else
-  echo -n "Unknown Pi Model. Please type \"0\" for Pi Zero/v1, or \"2\" for Pi v2/v3: "
+  echo -n "Unknown Pi Model. Please type \"0\" for Pi Zero/v1, or \"2\" for Pi v2/v3, or \"4\" for Pi v4: "
 fi
 
 read -n 1 resp
@@ -202,6 +205,9 @@ case $resp in
   2)
     MODEL="RPi2"
   ;;
+  4)
+    MODEL="RPi4"
+  ;;
   "")
     case $MODEL in
       "Pi Zero/v1")
@@ -209,6 +215,9 @@ case $resp in
       ;;
       "Pi v2/v3")
         MODEL="RPi2"
+      ;;
+      "Pi v4")
+        MODEL="RPi4"
       ;;
       "")
         echo "Could not determine proper Pi Model, quitting..."
