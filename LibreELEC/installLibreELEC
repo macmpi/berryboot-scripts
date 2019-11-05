@@ -3,7 +3,7 @@
 # Source & license at https://github.com/macmpi/berryboot-scripts
 # Feel free to report any issue or comment there.
 
-INSTLEVERSION="1.2"
+INSTLEVERSION="1.3"
 
 BBINITURL="https://bit.ly/BBInitLibreELEC"    
 INSTLEURL="https://bit.ly/InstLibreELEC"  
