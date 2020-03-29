@@ -32,6 +32,9 @@ That patched image will then natively support all features, as would the standal
 
 
 ### changelog:
+1.6:  (March 19th 2020)
+- fix UUID extraction
+
 1.5:  (September 4th 2019)
 - supports berryboot 20190612 & later
 
