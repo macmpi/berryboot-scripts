@@ -56,7 +56,7 @@ exec /reloc-init   # exec ensures we keep PID 1, which is required for switch_ro
 
 ###################### We start from here !! ###########################
 
-BBINITVERSION="1.5"
+BBINITVERSION="1.6"
 
 BBINITURL="https://bit.ly/BBInitLibreELEC"    
 
@@ -97,7 +97,7 @@ do
 done
 
 # sanity-check
-BOOT_PART=${BOOT_PART/#UUID=/}   # extract actual UUID out of UUID=XXX if any
+BOOT_PART=${BOOT_PART#UUID=}   # extract actual UUID out of UUID=XXX if any
 
 if [ -z "${BOOT_PART}" ]; then
   BOOT_PART="/dev/mmcblk0p1"   # default berryboot convention
