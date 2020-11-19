@@ -324,7 +324,7 @@ mkdir -p "${DATADIR}"/bin
 if [ -e "${DATADIR}"/noswap ]; then
   echo "#!/bin/sh" > "${DATADIR}"/bin/dynswap.sh
 else
-  sed 's/\/data\/swapfile/\/'"${BBMOUNT#"/"}"'\/data\/volumio_swapfile/g' /squashfs/bin/dynswap.sh > "${DATADIR}"/bin/dynswap.sh
+  sed 's/\/\(data\|swap\)\/swapfile/\/'"${BBMOUNT#"/"}"'\/data\/volumio_swapfile/g' /squashfs/bin/dynswap.sh > "${DATADIR}"/bin/dynswap.sh
 fi
 chmod 774 "${DATADIR}"/bin/dynswap.sh
 
