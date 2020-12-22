@@ -207,7 +207,7 @@ echo "Downloading zsync file.."
 wget -O volumio_current.sqsh.zsync https://updates.volumio.org/pi/volumio/"${VLATEST}"/volumio_current.sqsh.zsync > /dev/null 2>&1
 
 echo "Downloading original image from Volumio2 repo, this may take a bit of time..."
-if zsync -i "${FILENAME}" volumio_current.sqsh.zsync; then
+if zsync -i "${FILENAME}" -u https://updates.volumio.org/pi/volumio/"${VLATEST}"/ volumio_current.sqsh.zsync; then
   echo "Obtaining patches..."
   if wget -O berryboot-init "${BBINITURL}" > /dev/null 2>&1; then
     echo "Applying patches..."
