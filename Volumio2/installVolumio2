@@ -165,7 +165,7 @@ BB_MEM="240"         # this corresponds to Volumio default 16MB gpu memory split
 
 
 # Try to find latest Volumio2 version number
-VLATEST=$( curl -Ls --user-agent "fogent" "https://volumio.org/get-started/#pi" | grep -o 'http:\/\/updates.volumio.org\/pi\/volumio\/.*\/volumio' | awk -F "/" '{print $6}' )
+VLATEST=$( curl -Ls --user-agent "fogent" "https://volumio.org/get-started/#pi" | grep -o 'https:\/\/updates.volumio.org\/pi\/volumio\/.*\/volumio' | awk -F "/" '{print $6}' )
 echo ""
 if [ -z "${VLATEST}" ]; then
   echo "Could not identify latest version, falling-back to version ${FBVERSION}"
