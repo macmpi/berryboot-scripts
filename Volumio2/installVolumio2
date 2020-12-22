@@ -203,7 +203,7 @@ cd "${WORKDIR}"
 FILENAME="${IMAGENAME}".img"${BB_MEM}"   # Volumio image file name in Berryboot
 touch "${FILENAME}"
 
-echo "Downloading zsync file.."
+echo "Downloading zsync file..."
 wget -O volumio_current.sqsh.zsync https://updates.volumio.org/pi/volumio/"${VLATEST}"/volumio_current.sqsh.zsync > /dev/null 2>&1
 
 echo "Downloading original image from Volumio2 repo, this may take a bit of time..."
