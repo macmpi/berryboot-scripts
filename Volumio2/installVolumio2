@@ -165,7 +165,7 @@ BB_MEM="240"         # this corresponds to Volumio default 16MB gpu memory split
 
 
 # Try to find latest Volumio2 version number
-VLATEST=$( curl -Ls --user-agent "fogent" "https://volumio.org/get-started/#pi" | grep -o 'http:\/\/updates.volumio.org\/pi\/volumio\/.*\/volumio' | awk -F "/" '{print $6}' )
+VLATEST=$( curl -Ls --user-agent "fogent" "https://volumio.org/get-started/#pi" | grep -o 'https:\/\/updates.volumio.org\/pi\/volumio\/.*\/volumio' | awk -F "/" '{print $6}' )
 echo ""
 if [ -z "${VLATEST}" ]; then
   echo "Could not identify latest version, falling-back to version ${FBVERSION}"
@@ -203,8 +203,11 @@ cd "${WORKDIR}"
 FILENAME="${IMAGENAME}".img"${BB_MEM}"   # Volumio image file name in Berryboot
 touch "${FILENAME}"
 
+echo "Downloading zsync file..."
+wget -O volumio_current.sqsh.zsync https://updates.volumio.org/pi/volumio/"${VLATEST}"/volumio_current.sqsh.zsync > /dev/null 2>&1
+
 echo "Downloading original image from Volumio2 repo, this may take a bit of time..."
-if zsync -i "${FILENAME}" http://updates.volumio.org/pi/volumio/"${VLATEST}"/volumio_current.sqsh.zsync; then
+if zsync -i "${FILENAME}" -u https://updates.volumio.org/pi/volumio/"${VLATEST}"/ volumio_current.sqsh.zsync; then
   echo "Obtaining patches..."
   if wget -O berryboot-init "${BBINITURL}" > /dev/null 2>&1; then
     echo "Applying patches..."
